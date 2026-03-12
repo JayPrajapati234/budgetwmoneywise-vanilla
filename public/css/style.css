@@ -1,0 +1,908 @@
+/*
+ * style.css - BudgetWise Custom Stylesheet
+ * Dark mode by default with light mode toggle
+ * Uses CSS variables for theming
+ * Responsive design with Bootstrap 5 grid
+ */
+
+/* ============================================
+   Google Fonts Import
+   ============================================ */
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap');
+
+/* ============================================
+   CSS Variables (Design Tokens)
+   ============================================ */
+:root {
+  --primary: #6366f1;
+  --primary-light: #818cf8;
+  --primary-dark: #4f46e5;
+  --income: #22c55e;
+  --income-light: #4ade80;
+  --expense: #ef4444;
+  --expense-light: #f87171;
+  --warning: #eab308;
+  --info: #3b82f6;
+
+  /* Light mode colors */
+  --bg-body: #f1f5f9;
+  --bg-card: #ffffff;
+  --bg-card-hover: #f8fafc;
+  --bg-navbar: #ffffff;
+  --bg-input: #ffffff;
+  --text-primary: #0f172a;
+  --text-secondary: #475569;
+  --text-muted: #94a3b8;
+  --border-color: #e2e8f0;
+  --shadow-color: rgba(0,0,0,0.08);
+  --shadow-lg: rgba(0,0,0,0.12);
+}
+
+/* Dark mode variables */
+.dark-mode {
+  --bg-body: #0f172a;
+  --bg-card: #1e293b;
+  --bg-card-hover: #263548;
+  --bg-navbar: #1e293b;
+  --bg-input: #334155;
+  --text-primary: #f1f5f9;
+  --text-secondary: #cbd5e1;
+  --text-muted: #64748b;
+  --border-color: #334155;
+  --shadow-color: rgba(0,0,0,0.3);
+  --shadow-lg: rgba(0,0,0,0.5);
+}
+
+/* ============================================
+   Base Styles
+   ============================================ */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: 'Poppins', sans-serif;
+  background-color: var(--bg-body);
+  color: var(--text-primary);
+  transition: background-color 0.3s ease, color 0.3s ease;
+  min-height: 100vh;
+}
+
+a {
+  color: var(--primary);
+  text-decoration: none;
+  transition: color 0.2s ease;
+}
+
+a:hover {
+  color: var(--primary-light);
+}
+
+/* ============================================
+   Navbar Styles
+   ============================================ */
+.navbar {
+  background-color: var(--bg-navbar) !important;
+  border-bottom: 1px solid var(--border-color);
+  box-shadow: 0 2px 10px var(--shadow-color);
+  padding: 0.5rem 1rem;
+  transition: all 0.3s ease;
+}
+
+.navbar-brand {
+  font-weight: 700;
+  font-size: 1.4rem;
+  color: var(--primary) !important;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.navbar-brand i {
+  font-size: 1.6rem;
+}
+
+.nav-link {
+  color: var(--text-secondary) !important;
+  font-weight: 500;
+  padding: 0.5rem 1rem !important;
+  border-radius: 8px;
+  transition: all 0.2s ease;
+  margin: 0 0.1rem;
+}
+
+.nav-link:hover,
+.nav-link.active {
+  color: var(--primary) !important;
+  background-color: rgba(99, 102, 241, 0.1);
+}
+
+.navbar-toggler {
+  border-color: var(--border-color);
+  color: var(--text-primary);
+}
+
+.navbar-toggler-icon {
+  background-image: none;
+}
+
+.dark-mode .navbar-toggler-icon {
+  filter: invert(1);
+}
+
+/* Theme toggle button */
+#themeToggle {
+  background: none;
+  border: 1px solid var(--border-color);
+  color: var(--text-primary);
+  border-radius: 50%;
+  width: 38px;
+  height: 38px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  font-size: 1.1rem;
+}
+
+#themeToggle:hover {
+  background-color: rgba(99, 102, 241, 0.1);
+  border-color: var(--primary);
+  color: var(--primary);
+}
+
+/* ============================================
+   Card Styles
+   ============================================ */
+.card {
+  background-color: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: 16px;
+  box-shadow: 0 4px 15px var(--shadow-color);
+  transition: all 0.3s ease;
+  overflow: hidden;
+}
+
+.card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 25px var(--shadow-lg);
+}
+
+.card-body {
+  padding: 1.5rem;
+}
+
+.card-title {
+  color: var(--text-secondary);
+  font-size: 0.85rem;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 0.5rem;
+}
+
+/* Summary stat cards */
+.stat-card {
+  position: relative;
+  overflow: hidden;
+}
+
+.stat-card .stat-icon {
+  position: absolute;
+  top: 1rem;
+  right: 1rem;
+  font-size: 2.5rem;
+  opacity: 0.15;
+  color: var(--primary);
+}
+
+.stat-card .stat-value {
+  font-size: 1.8rem;
+  font-weight: 700;
+  margin: 0.5rem 0;
+}
+
+.stat-card .stat-label {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+}
+
+.stat-card.income .stat-value,
+.stat-card.income .stat-icon { color: var(--income); }
+
+.stat-card.expense .stat-value,
+.stat-card.expense .stat-icon { color: var(--expense); }
+
+.stat-card.balance .stat-value,
+.stat-card.balance .stat-icon { color: var(--primary); }
+
+.stat-card.savings .stat-value,
+.stat-card.savings .stat-icon { color: var(--info); }
+
+/* ============================================
+   Auth Page (Login/Register)
+   ============================================ */
+.auth-container {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem;
+  background: linear-gradient(135deg, #0f172a 0%, #1e1b4b 50%, #0f172a 100%);
+}
+
+.auth-card {
+  max-width: 450px;
+  width: 100%;
+  border-radius: 20px;
+  overflow: hidden;
+}
+
+.auth-card .card-body {
+  padding: 2.5rem;
+}
+
+.auth-header {
+  text-align: center;
+  margin-bottom: 2rem;
+}
+
+.auth-header h1 {
+  font-size: 2rem;
+  font-weight: 700;
+  color: var(--primary);
+}
+
+.auth-header p {
+  color: var(--text-muted);
+  font-size: 0.9rem;
+}
+
+/* Tab switcher for Login/Register */
+.auth-tabs {
+  display: flex;
+  border-radius: 12px;
+  background-color: var(--bg-body);
+  padding: 4px;
+  margin-bottom: 1.5rem;
+}
+
+.auth-tab {
+  flex: 1;
+  padding: 0.6rem 1rem;
+  text-align: center;
+  border: none;
+  background: none;
+  font-family: 'Poppins', sans-serif;
+  font-weight: 500;
+  color: var(--text-muted);
+  border-radius: 10px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.auth-tab.active {
+  background-color: var(--primary);
+  color: #ffffff;
+  box-shadow: 0 4px 12px rgba(99, 102, 241, 0.4);
+}
+
+/* ============================================
+   Form Styles
+   ============================================ */
+.form-control,
+.form-select {
+  background-color: var(--bg-input);
+  border: 1px solid var(--border-color);
+  color: var(--text-primary);
+  border-radius: 10px;
+  padding: 0.7rem 1rem;
+  font-family: 'Poppins', sans-serif;
+  font-size: 0.9rem;
+  transition: all 0.3s ease;
+}
+
+.form-control:focus,
+.form-select:focus {
+  background-color: var(--bg-input);
+  border-color: var(--primary);
+  color: var(--text-primary);
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.2);
+}
+
+.form-control::placeholder {
+  color: var(--text-muted);
+}
+
+.form-label {
+  color: var(--text-secondary);
+  font-weight: 500;
+  font-size: 0.85rem;
+  margin-bottom: 0.4rem;
+}
+
+.form-check-input:checked {
+  background-color: var(--primary);
+  border-color: var(--primary);
+}
+
+/* Password toggle button */
+.password-toggle {
+  position: absolute;
+  right: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  padding: 4px;
+  z-index: 5;
+}
+
+.password-toggle:hover {
+  color: var(--primary);
+}
+
+/* ============================================
+   Button Styles
+   ============================================ */
+.btn-primary {
+  background-color: var(--primary);
+  border-color: var(--primary);
+  border-radius: 10px;
+  padding: 0.6rem 1.5rem;
+  font-weight: 600;
+  font-family: 'Poppins', sans-serif;
+  transition: all 0.3s ease;
+}
+
+.btn-primary:hover {
+  background-color: var(--primary-dark);
+  border-color: var(--primary-dark);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 15px rgba(99, 102, 241, 0.4);
+}
+
+.btn-success {
+  background-color: var(--income);
+  border-color: var(--income);
+  border-radius: 10px;
+  font-weight: 600;
+  font-family: 'Poppins', sans-serif;
+}
+
+.btn-danger {
+  background-color: var(--expense);
+  border-color: var(--expense);
+  border-radius: 10px;
+  font-weight: 600;
+  font-family: 'Poppins', sans-serif;
+}
+
+.btn-outline-primary {
+  color: var(--primary);
+  border-color: var(--primary);
+  border-radius: 10px;
+  font-weight: 500;
+  font-family: 'Poppins', sans-serif;
+}
+
+.btn-outline-primary:hover {
+  background-color: var(--primary);
+  color: #fff;
+}
+
+.btn-outline-secondary {
+  color: var(--text-secondary);
+  border-color: var(--border-color);
+  border-radius: 10px;
+  font-family: 'Poppins', sans-serif;
+}
+
+.btn-outline-secondary:hover {
+  background-color: var(--bg-card-hover);
+  color: var(--text-primary);
+  border-color: var(--border-color);
+}
+
+.btn-demo {
+  background: linear-gradient(135deg, var(--primary), var(--primary-light));
+  border: none;
+  color: #fff;
+  border-radius: 10px;
+  padding: 0.6rem 1.5rem;
+  font-weight: 600;
+  font-family: 'Poppins', sans-serif;
+  transition: all 0.3s ease;
+}
+
+.btn-demo:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 15px rgba(99, 102, 241, 0.5);
+  color: #fff;
+}
+
+/* ============================================
+   Table Styles
+   ============================================ */
+.table {
+  color: var(--text-primary);
+  font-size: 0.9rem;
+}
+
+.table thead th {
+  border-bottom: 2px solid var(--border-color);
+  color: var(--text-secondary);
+  font-weight: 600;
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  padding: 1rem 0.75rem;
+}
+
+.table tbody td {
+  border-bottom: 1px solid var(--border-color);
+  padding: 0.85rem 0.75rem;
+  vertical-align: middle;
+}
+
+.table-hover tbody tr:hover {
+  background-color: var(--bg-card-hover);
+}
+
+.dark-mode .table {
+  --bs-table-bg: transparent;
+  --bs-table-striped-bg: rgba(255,255,255,0.03);
+  --bs-table-hover-bg: rgba(255,255,255,0.05);
+}
+
+/* Amount badges */
+.amount-income {
+  color: var(--income);
+  font-weight: 600;
+}
+
+.amount-expense {
+  color: var(--expense);
+  font-weight: 600;
+}
+
+/* Type badges */
+.badge-income {
+  background-color: rgba(34, 197, 94, 0.15);
+  color: var(--income);
+  padding: 0.3rem 0.8rem;
+  border-radius: 20px;
+  font-size: 0.75rem;
+  font-weight: 500;
+}
+
+.badge-expense {
+  background-color: rgba(239, 68, 68, 0.15);
+  color: var(--expense);
+  padding: 0.3rem 0.8rem;
+  border-radius: 20px;
+  font-size: 0.75rem;
+  font-weight: 500;
+}
+
+/* Category badges */
+.badge-category {
+  background-color: rgba(99, 102, 241, 0.15);
+  color: var(--primary);
+  padding: 0.3rem 0.8rem;
+  border-radius: 20px;
+  font-size: 0.75rem;
+  font-weight: 500;
+}
+
+/* ============================================
+   Chart Container
+   ============================================ */
+.chart-container {
+  position: relative;
+  height: 300px;
+  padding: 1rem 0;
+}
+
+/* ============================================
+   Progress Bar Styles
+   ============================================ */
+.progress {
+  background-color: var(--bg-body);
+  border-radius: 10px;
+  height: 10px;
+  overflow: hidden;
+}
+
+.progress-bar {
+  border-radius: 10px;
+  transition: width 0.6s ease;
+}
+
+/* ============================================
+   Budget Card Styles
+   ============================================ */
+.budget-card {
+  border-left: 4px solid var(--primary);
+  transition: all 0.3s ease;
+}
+
+.budget-card.over-budget {
+  border-left-color: var(--expense);
+}
+
+.budget-card.warning {
+  border-left-color: var(--warning);
+}
+
+.budget-card.on-track {
+  border-left-color: var(--income);
+}
+
+/* Circular progress indicator */
+.circular-progress {
+  position: relative;
+  width: 100px;
+  height: 100px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto 1rem;
+}
+
+.circular-progress .percentage {
+  font-size: 1.2rem;
+  font-weight: 700;
+}
+
+/* ============================================
+   Profile Page
+   ============================================ */
+.avatar-circle {
+  width: 100px;
+  height: 100px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--primary), var(--primary-light));
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 2.5rem;
+  font-weight: 700;
+  color: #ffffff;
+  margin: 0 auto 1rem;
+}
+
+/* ============================================
+   Toast / Alert styles
+   ============================================ */
+.custom-alert {
+  border-radius: 12px;
+  border: none;
+  font-family: 'Poppins', sans-serif;
+  font-size: 0.9rem;
+  animation: slideDown 0.3s ease;
+}
+
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* ============================================
+   Transaction type radio buttons
+   ============================================ */
+.type-radio-group {
+  display: flex;
+  gap: 1rem;
+}
+
+.type-radio {
+  flex: 1;
+}
+
+.type-radio input[type="radio"] {
+  display: none;
+}
+
+.type-radio label {
+  display: block;
+  text-align: center;
+  padding: 0.7rem 1rem;
+  border: 2px solid var(--border-color);
+  border-radius: 12px;
+  cursor: pointer;
+  font-weight: 500;
+  transition: all 0.3s ease;
+  color: var(--text-secondary);
+}
+
+.type-radio input[type="radio"]:checked + label.income-label {
+  border-color: var(--income);
+  background-color: rgba(34, 197, 94, 0.1);
+  color: var(--income);
+}
+
+.type-radio input[type="radio"]:checked + label.expense-label {
+  border-color: var(--expense);
+  background-color: rgba(239, 68, 68, 0.1);
+  color: var(--expense);
+}
+
+/* ============================================
+   Pagination
+   ============================================ */
+.page-link {
+  background-color: var(--bg-card);
+  border-color: var(--border-color);
+  color: var(--text-primary);
+  font-family: 'Poppins', sans-serif;
+}
+
+.page-link:hover {
+  background-color: var(--bg-card-hover);
+  border-color: var(--border-color);
+  color: var(--primary);
+}
+
+.page-item.active .page-link {
+  background-color: var(--primary);
+  border-color: var(--primary);
+}
+
+.page-item.disabled .page-link {
+  background-color: var(--bg-card);
+  border-color: var(--border-color);
+  color: var(--text-muted);
+}
+
+/* ============================================
+   Modal Styles
+   ============================================ */
+.modal-content {
+  background-color: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: 16px;
+  color: var(--text-primary);
+}
+
+.modal-header {
+  border-bottom-color: var(--border-color);
+}
+
+.modal-footer {
+  border-top-color: var(--border-color);
+}
+
+.btn-close {
+  filter: var(--text-primary);
+}
+
+.dark-mode .btn-close {
+  filter: invert(1) grayscale(100%) brightness(200%);
+}
+
+/* ============================================
+   Utility Classes
+   ============================================ */
+.text-income { color: var(--income) !important; }
+.text-expense { color: var(--expense) !important; }
+.text-primary-custom { color: var(--primary) !important; }
+.text-muted-custom { color: var(--text-muted) !important; }
+.text-secondary-custom { color: var(--text-secondary) !important; }
+.bg-card-custom { background-color: var(--bg-card) !important; }
+
+.section-title {
+  font-size: 1.2rem;
+  font-weight: 600;
+  margin-bottom: 1rem;
+  color: var(--text-primary);
+}
+
+/* Danger zone */
+.danger-zone {
+  border: 2px solid var(--expense);
+  border-radius: 16px;
+  padding: 1.5rem;
+}
+
+.danger-zone h5 {
+  color: var(--expense);
+}
+
+/* ============================================
+   Dropdown menu
+   ============================================ */
+.dropdown-menu {
+  background-color: var(--bg-card);
+  border-color: var(--border-color);
+  border-radius: 12px;
+  box-shadow: 0 8px 25px var(--shadow-lg);
+}
+
+.dropdown-item {
+  color: var(--text-primary);
+  font-family: 'Poppins', sans-serif;
+  padding: 0.5rem 1rem;
+}
+
+.dropdown-item:hover {
+  background-color: var(--bg-card-hover);
+  color: var(--primary);
+}
+
+.dropdown-divider {
+  border-color: var(--border-color);
+}
+
+/* ============================================
+   Animations
+   ============================================ */
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.fade-in-up {
+  animation: fadeInUp 0.5s ease forwards;
+}
+
+.fade-in-up:nth-child(1) { animation-delay: 0.1s; }
+.fade-in-up:nth-child(2) { animation-delay: 0.2s; }
+.fade-in-up:nth-child(3) { animation-delay: 0.3s; }
+.fade-in-up:nth-child(4) { animation-delay: 0.4s; }
+
+/* ============================================
+   Responsive Design
+   ============================================ */
+
+/* Tablet */
+@media (max-width: 991px) {
+  .stat-card .stat-value {
+    font-size: 1.4rem;
+  }
+  .navbar-brand {
+    font-size: 1.2rem;
+  }
+}
+
+/* Mobile */
+@media (max-width: 767px) {
+  .stat-card .stat-value {
+    font-size: 1.2rem;
+  }
+
+  .card-body {
+    padding: 1rem;
+  }
+
+  .auth-card .card-body {
+    padding: 1.5rem;
+  }
+
+  .chart-container {
+    height: 250px;
+  }
+
+  /* Hide some table columns on mobile */
+  .hide-mobile {
+    display: none !important;
+  }
+
+  .section-title {
+    font-size: 1rem;
+  }
+
+  /* Bottom nav for mobile */
+  .mobile-bottom-nav {
+    display: flex !important;
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    background-color: var(--bg-navbar);
+    border-top: 1px solid var(--border-color);
+    z-index: 1050;
+    padding: 0.5rem 0;
+    box-shadow: 0 -2px 10px var(--shadow-color);
+  }
+
+  .mobile-bottom-nav a {
+    flex: 1;
+    text-align: center;
+    color: var(--text-muted);
+    font-size: 0.7rem;
+    padding: 0.3rem;
+    text-decoration: none;
+    transition: color 0.2s ease;
+  }
+
+  .mobile-bottom-nav a.active,
+  .mobile-bottom-nav a:hover {
+    color: var(--primary);
+  }
+
+  .mobile-bottom-nav a i {
+    display: block;
+    font-size: 1.2rem;
+    margin-bottom: 0.1rem;
+  }
+
+  /* Add padding at bottom for fixed nav */
+  body {
+    padding-bottom: 70px;
+  }
+}
+
+/* Desktop - hide mobile nav */
+@media (min-width: 768px) {
+  .mobile-bottom-nav {
+    display: none !important;
+  }
+}
+
+/* ============================================
+   Print Styles
+   ============================================ */
+@media print {
+  .navbar, .mobile-bottom-nav, .btn, .no-print {
+    display: none !important;
+  }
+  body {
+    background-color: #fff !important;
+    color: #000 !important;
+    padding-bottom: 0 !important;
+  }
+  .card {
+    border: 1px solid #ddd !important;
+    box-shadow: none !important;
+  }
+}
+
+/* ============================================
+   Scrollbar Styles
+   ============================================ */
+::-webkit-scrollbar {
+  width: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--bg-body);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--text-muted);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--primary);
+}
+
+/* ============================================
+   Sample data banner
+   ============================================ */
+.sample-data-banner {
+  background: linear-gradient(135deg, rgba(99,102,241,0.1), rgba(129,140,248,0.1));
+  border: 1px dashed var(--primary);
+  border-radius: 12px;
+  padding: 1rem 1.5rem;
+  text-align: center;
+}
