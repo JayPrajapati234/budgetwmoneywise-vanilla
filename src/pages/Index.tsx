@@ -1,6 +1,5 @@
 const Index = () => {
-  // Redirect to the static HTML app
-  window.location.href = '/index.html';
+  window.location.href = '/login.html';
   return (
     <div style={{ display: 'flex', minHeight: '100vh', alignItems: 'center', justifyContent: 'center', background: '#0f172a', color: '#f1f5f9', fontFamily: 'Poppins, sans-serif' }}>
       <div style={{ textAlign: 'center' }}>
