@@ -1,11 +1,11 @@
-// Update this page (the content is just a fallback if you fail to update the page)
-
 const Index = () => {
+  // Redirect to the static HTML app
+  window.location.href = '/index.html';
   return (
-    <div className="flex min-h-screen items-center justify-center bg-background">
-      <div className="text-center">
-        <h1 className="mb-4 text-4xl font-bold">Welcome to Your Blank App</h1>
-        <p className="text-xl text-muted-foreground">Start building your amazing project here!</p>
+    <div style={{ display: 'flex', minHeight: '100vh', alignItems: 'center', justifyContent: 'center', background: '#0f172a', color: '#f1f5f9', fontFamily: 'Poppins, sans-serif' }}>
+      <div style={{ textAlign: 'center' }}>
+        <h1 style={{ fontSize: '2rem', marginBottom: '1rem', color: '#6366f1' }}>💰 BudgetWise</h1>
+        <p>Loading your Expense Tracker...</p>
       </div>
     </div>
   );
