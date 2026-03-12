@@ -1,0 +1,274 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="BudgetWise - Smart Expense Tracker and Budget Planner">
+  <title>BudgetWise - Login</title>
+  <!-- Bootstrap 5 CSS -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+  <!-- Bootstrap Icons -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
+  <!-- Custom CSS -->
+  <link href="css/style.css" rel="stylesheet">
+</head>
+<body>
+  <!-- Auth Container - centered card -->
+  <div class="auth-container">
+    <div class="card auth-card">
+      <div class="card-body">
+        <!-- App Header -->
+        <div class="auth-header">
+          <h1><i class="bi bi-wallet2"></i> BudgetWise</h1>
+          <p>Track expenses, plan budgets, save smarter.</p>
+        </div>
+
+        <!-- Alert container for errors -->
+        <div id="authAlert"></div>
+
+        <!-- Login / Register Tab Switcher -->
+        <div class="auth-tabs">
+          <button class="auth-tab active" onclick="switchTab('login')" id="loginTab">Login</button>
+          <button class="auth-tab" onclick="switchTab('register')" id="registerTab">Register</button>
+        </div>
+
+        <!-- ===== LOGIN FORM ===== -->
+        <form id="loginForm" onsubmit="handleLogin(event)">
+          <div class="mb-3">
+            <label for="loginEmail" class="form-label">Email Address</label>
+            <input type="email" class="form-control" id="loginEmail" placeholder="Enter your email" required>
+          </div>
+          <div class="mb-3">
+            <label for="loginPassword" class="form-label">Password</label>
+            <div class="position-relative">
+              <input type="password" class="form-control" id="loginPassword" placeholder="Enter password" minlength="6" required>
+              <button type="button" class="password-toggle" onclick="togglePassword('loginPassword', this)">
+                <i class="bi bi-eye"></i>
+              </button>
+            </div>
+          </div>
+          <div class="mb-3 form-check">
+            <input type="checkbox" class="form-check-input" id="rememberMe">
+            <label class="form-check-label" for="rememberMe" style="color: var(--text-secondary);">Remember Me</label>
+          </div>
+          <button type="submit" class="btn btn-primary w-100 mb-3">
+            <i class="bi bi-box-arrow-in-right"></i> Login
+          </button>
+          <button type="button" class="btn btn-demo w-100" onclick="demoLogin()">
+            <i class="bi bi-lightning-fill"></i> Demo Login
+          </button>
+        </form>
+
+        <!-- ===== REGISTER FORM ===== -->
+        <form id="registerForm" style="display:none;" onsubmit="handleRegister(event)">
+          <div class="mb-3">
+            <label for="regName" class="form-label">Full Name</label>
+            <input type="text" class="form-control" id="regName" placeholder="Enter your full name" required>
+          </div>
+          <div class="mb-3">
+            <label for="regEmail" class="form-label">Email Address</label>
+            <input type="email" class="form-control" id="regEmail" placeholder="Enter your email" required>
+          </div>
+          <div class="mb-3">
+            <label for="regPassword" class="form-label">Password</label>
+            <div class="position-relative">
+              <input type="password" class="form-control" id="regPassword" placeholder="Min 6 characters" minlength="6" required>
+              <button type="button" class="password-toggle" onclick="togglePassword('regPassword', this)">
+                <i class="bi bi-eye"></i>
+              </button>
+            </div>
+          </div>
+          <div class="mb-3">
+            <label for="regConfirmPassword" class="form-label">Confirm Password</label>
+            <div class="position-relative">
+              <input type="password" class="form-control" id="regConfirmPassword" placeholder="Confirm your password" required>
+              <button type="button" class="password-toggle" onclick="togglePassword('regConfirmPassword', this)">
+                <i class="bi bi-eye"></i>
+              </button>
+            </div>
+          </div>
+          <div class="mb-3">
+            <label for="regCurrency" class="form-label">Preferred Currency</label>
+            <select class="form-select" id="regCurrency">
+              <option value="INR">₹ INR - Indian Rupee</option>
+              <option value="USD">$ USD - US Dollar</option>
+              <option value="EUR">€ EUR - Euro</option>
+              <option value="GBP">£ GBP - British Pound</option>
+            </select>
+          </div>
+          <button type="submit" class="btn btn-primary w-100">
+            <i class="bi bi-person-plus"></i> Create Account
+          </button>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- Bootstrap JS -->
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+  <!-- jQuery -->
+  <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+  <!-- Storage helpers -->
+  <script src="js/storage.js"></script>
+
+  <script>
+    /**
+     * On page load: apply dark mode, check if already logged in
+     */
+    $(document).ready(function() {
+      applySavedTheme();
+      // If user already logged in, redirect to dashboard
+      var user = getCurrentUser();
+      if (user) {
+        window.location.href = 'dashboard.html';
+      }
+    });
+
+    /**
+     * Switch between Login and Register tabs
+     * @param {string} tab - 'login' or 'register'
+     */
+    function switchTab(tab) {
+      $('#authAlert').html('');
+      if (tab === 'login') {
+        $('#loginForm').show();
+        $('#registerForm').hide();
+        $('#loginTab').addClass('active');
+        $('#registerTab').removeClass('active');
+      } else {
+        $('#loginForm').hide();
+        $('#registerForm').show();
+        $('#registerTab').addClass('active');
+        $('#loginTab').removeClass('active');
+      }
+    }
+
+    /**
+     * Toggle password visibility for an input field
+     * @param {string} inputId - ID of the password input
+     * @param {HTMLElement} btn - Toggle button element
+     */
+    function togglePassword(inputId, btn) {
+      var input = document.getElementById(inputId);
+      var icon = btn.querySelector('i');
+      if (input.type === 'password') {
+        input.type = 'text';
+        icon.className = 'bi bi-eye-slash';
+      } else {
+        input.type = 'password';
+        icon.className = 'bi bi-eye';
+      }
+    }
+
+    /**
+     * Show alert message on the auth page
+     * @param {string} message - Alert text
+     * @param {string} type - Bootstrap alert type (danger, success, warning)
+     */
+    function showAuthAlert(message, type) {
+      $('#authAlert').html(
+        '<div class="alert alert-' + type + ' custom-alert alert-dismissible fade show">' +
+        message +
+        '<button type="button" class="btn-close" data-bs-dismiss="alert"></button>' +
+        '</div>'
+      );
+    }
+
+    /**
+     * Validate email format using regex
+     * @param {string} email - Email to validate
+     * @returns {boolean} True if valid
+     */
+    function isValidEmail(email) {
+      var regex = /^[a-zA-Z0-9._-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+      return regex.test(email);
+    }
+
+    /**
+     * Handle login form submission
+     * Validates fields and checks localStorage for user
+     */
+    function handleLogin(event) {
+      event.preventDefault();
+      var email = $('#loginEmail').val().trim();
+      var password = $('#loginPassword').val();
+
+      // Empty field check
+      if (!email || !password) {
+        showAuthAlert('Please fill in all fields.', 'danger');
+        return;
+      }
+      // Email format check
+      if (!isValidEmail(email)) {
+        showAuthAlert('Please enter a valid email address.', 'danger');
+        return;
+      }
+      // Check if user exists in localStorage
+      var user = getCurrentUser();
+      if (user && user.email === email && user.password === password) {
+        showAuthAlert('Login successful! Redirecting...', 'success');
+        setTimeout(function() {
+          window.location.href = 'dashboard.html';
+        }, 500);
+      } else {
+        showAuthAlert('Invalid email or password. Try the Demo Login or Register first.', 'danger');
+      }
+    }
+
+    /**
+     * Handle registration form submission
+     * Validates all fields and saves user to localStorage
+     */
+    function handleRegister(event) {
+      event.preventDefault();
+      var name = $('#regName').val().trim();
+      var email = $('#regEmail').val().trim();
+      var password = $('#regPassword').val();
+      var confirmPassword = $('#regConfirmPassword').val();
+      var currency = $('#regCurrency').val();
+
+      // Empty field check
+      if (!name || !email || !password || !confirmPassword) {
+        showAuthAlert('Please fill in all fields.', 'danger');
+        return;
+      }
+      // Email format check using regex
+      if (!isValidEmail(email)) {
+        showAuthAlert('Please enter a valid email address.', 'danger');
+        return;
+      }
+      // Password length check
+      if (password.length < 6) {
+        showAuthAlert('Password must be at least 6 characters.', 'danger');
+        return;
+      }
+      // Password match check
+      if (password !== confirmPassword) {
+        showAuthAlert('Passwords do not match!', 'danger');
+        return;
+      }
+
+      // Save user to localStorage
+      registerUser(name, email, password, currency);
+      showAuthAlert('Account created successfully! Redirecting...', 'success');
+      setTimeout(function() {
+        window.location.href = 'dashboard.html';
+      }, 500);
+    }
+
+    /**
+     * Demo login - fills form with demo credentials and logs in
+     */
+    function demoLogin() {
+      // Register a demo user
+      registerUser('Demo User', 'demo@budgetwise.com', 'demo123', 'INR');
+      // Load sample data for the demo
+      loadSampleData();
+      showAuthAlert('Demo account ready! Redirecting...', 'success');
+      setTimeout(function() {
+        window.location.href = 'dashboard.html';
+      }, 500);
+    }
+  </script>
+</body>
+</html>
