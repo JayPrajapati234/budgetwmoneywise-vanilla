@@ -25,7 +25,7 @@ function getCurrentUser() {
 function checkAuth() {
   var user = getCurrentUser();
   if (!user) {
-    window.location.href = 'index.html';
+    window.location.href = 'login.html';
   }
   return user;
 }
