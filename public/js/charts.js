@@ -1,15 +1,28 @@
 /**
- * charts.js - All Chart.js chart creation functions
+ * charts.js - All Chart.js chart creation functions for BudgetWise
  * Uses Chart.js library loaded via CDN
  * All charts are responsive and support dark/light mode
+ * 
+ * Mumbai University NEP 2020 Syllabus Topics Covered:
+ * - Chart.js library usage (Pie, Doughnut, Bar, Line charts)
+ * - Canvas API (getContext('2d'))
+ * - Object configuration (chart options)
+ * - Callback functions (tooltip formatters)
+ * - Arrays and Objects
+ * 
+ * © 2026 BudgetWise. All Rights Reserved.
  */
 
 // Store chart instances so we can destroy them before re-creating
+// Prevents memory leaks when charts are updated
 var chartInstances = {};
 
 /**
  * Get colors based on current theme (dark or light mode)
- * @returns {Object} Color settings for charts
+ * Checks body classList to determine active theme
+ * Uses: document.body.classList.contains() for theme detection
+ * Syllabus: DOM classList API, Object literals, ternary operator
+ * @returns {Object} Color settings object with text, grid, tooltip colors
  */
 function getChartColors() {
   var isDark = document.body.classList.contains('dark-mode');
@@ -23,6 +36,9 @@ function getChartColors() {
 
 /**
  * Category color palette for consistent chart colors
+ * Each expense/income category has a unique color
+ * Uses: Object literal with key-value pairs
+ * Syllabus: Object definition, hex color codes
  */
 var categoryColors = {
   'Food': '#f97316',
@@ -42,7 +58,9 @@ var categoryColors = {
 };
 
 /**
- * Get color for a category
+ * Get color for a category with fallback
+ * Uses: Object property access with logical OR for default
+ * Syllabus: Object property lookup, fallback values
  * @param {string} category - Category name
  * @returns {string} Hex color code
  */
@@ -52,6 +70,9 @@ function getCategoryColor(category) {
 
 /**
  * Destroy an existing chart instance before re-creating
+ * Prevents duplicate chart errors and memory leaks
+ * Uses: Chart.js destroy() method, delete operator
+ * Syllabus: Object property deletion, conditional logic
  * @param {string} canvasId - Canvas element ID
  */
 function destroyChart(canvasId) {
@@ -63,9 +84,12 @@ function destroyChart(canvasId) {
 
 /**
  * Create a Doughnut chart for spending by category
- * @param {string} canvasId - Canvas element ID
- * @param {Array} labels - Category names
- * @param {Array} data - Amount values
+ * Shows expense distribution with a hollow center
+ * Uses: Chart.js 'doughnut' type, canvas getContext('2d')
+ * Syllabus: Chart.js configuration, Canvas API, callback functions
+ * @param {string} canvasId - Canvas element ID to render chart in
+ * @param {Array} labels - Category names (e.g., ['Food', 'Transport'])
+ * @param {Array} data - Amount values for each category
  */
 function createDoughnutChart(canvasId, labels, data) {
   destroyChart(canvasId);
@@ -74,7 +98,7 @@ function createDoughnutChart(canvasId, labels, data) {
   var ctx = canvas.getContext('2d');
   var colors = getChartColors();
 
-  // Generate colors array based on category names
+  // Generate background colors array from category color mapping
   var bgColors = labels.map(function(label) {
     return getCategoryColor(label);
   });
@@ -113,6 +137,7 @@ function createDoughnutChart(canvasId, labels, data) {
           titleFont: { family: 'Poppins' },
           bodyFont: { family: 'Poppins' },
           callbacks: {
+            // Custom tooltip showing amount and percentage
             label: function(context) {
               var total = context.dataset.data.reduce(function(a, b) { return a + b; }, 0);
               var pct = ((context.parsed / total) * 100).toFixed(1);
@@ -131,8 +156,11 @@ function createDoughnutChart(canvasId, labels, data) {
 
 /**
  * Create a Bar chart comparing income vs expenses
+ * Shows side-by-side bars for each month
+ * Uses: Chart.js 'bar' type with dual datasets
+ * Syllabus: Chart.js multi-dataset, axis configuration, callbacks
  * @param {string} canvasId - Canvas element ID
- * @param {Array} labels - Month names
+ * @param {Array} labels - Month name abbreviations (e.g., ['Jan', 'Feb'])
  * @param {Array} incomeData - Income amounts per month
  * @param {Array} expenseData - Expense amounts per month
  */
@@ -178,6 +206,7 @@ function createBarChart(canvasId, labels, incomeData, expenseData) {
           ticks: {
             color: colors.textColor,
             font: { family: 'Poppins' },
+            // Format y-axis labels as currency
             callback: function(value) { return formatCurrency(value); }
           },
           grid: { color: colors.gridColor }
@@ -211,8 +240,11 @@ function createBarChart(canvasId, labels, incomeData, expenseData) {
 
 /**
  * Create a Line chart for daily spending
+ * Shows spending trend over the month with filled area
+ * Uses: Chart.js 'line' type with tension for smooth curves
+ * Syllabus: Chart.js line configuration, fill option, point styling
  * @param {string} canvasId - Canvas element ID
- * @param {Array} labels - Day numbers
+ * @param {Array} labels - Day numbers as strings (e.g., ['1', '2', '3'])
  * @param {Array} data - Spending amounts per day
  */
 function createLineChart(canvasId, labels, data) {
@@ -231,8 +263,8 @@ function createLineChart(canvasId, labels, data) {
         data: data,
         borderColor: '#6366f1',
         backgroundColor: 'rgba(99,102,241,0.15)',
-        fill: true,
-        tension: 0.4,
+        fill: true,         // Fill area below line
+        tension: 0.4,       // Smooth curve
         pointBackgroundColor: '#6366f1',
         pointBorderColor: '#6366f1',
         pointRadius: 3,
@@ -284,9 +316,12 @@ function createLineChart(canvasId, labels, data) {
 
 /**
  * Create a Horizontal Bar chart for top spending categories
+ * Categories sorted from highest to lowest spending
+ * Uses: Chart.js 'bar' type with indexAxis: 'y' for horizontal layout
+ * Syllabus: Chart.js horizontal bars, sorted data visualization
  * @param {string} canvasId - Canvas element ID
- * @param {Array} labels - Category names (sorted)
- * @param {Array} data - Amounts (sorted highest first)
+ * @param {Array} labels - Category names sorted by amount
+ * @param {Array} data - Amounts sorted highest first
  */
 function createHorizontalBar(canvasId, labels, data) {
   destroyChart(canvasId);
@@ -295,6 +330,7 @@ function createHorizontalBar(canvasId, labels, data) {
   var ctx = canvas.getContext('2d');
   var colors = getChartColors();
 
+  // Color each bar based on category
   var bgColors = labels.map(function(label) {
     return getCategoryColor(label);
   });
@@ -312,7 +348,7 @@ function createHorizontalBar(canvasId, labels, data) {
       }]
     },
     options: {
-      indexAxis: 'y',
+      indexAxis: 'y',  // Makes bars horizontal
       responsive: true,
       maintainAspectRatio: false,
       scales: {
@@ -350,11 +386,14 @@ function createHorizontalBar(canvasId, labels, data) {
 }
 
 /**
- * Create a Pie chart (similar to doughnut but full circle)
+ * Create a Pie chart (full circle, no cutout)
+ * Similar to doughnut but without hollow center
+ * Uses: Chart.js 'pie' type
+ * Syllabus: Chart.js pie chart, Array.map(), callback functions
  * @param {string} canvasId - Canvas element ID
  * @param {Array} labels - Category names
- * @param {Array} data - Values
- * @param {Array} colors - Background colors array
+ * @param {Array} data - Amount values
+ * @param {Array} [customColors] - Optional custom color array
  */
 function createPieChart(canvasId, labels, data, customColors) {
   destroyChart(canvasId);
