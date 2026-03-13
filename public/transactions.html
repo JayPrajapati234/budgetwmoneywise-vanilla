@@ -7,8 +7,16 @@
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
   <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
   <link href="css/style.css" rel="stylesheet">
+  <link rel="manifest" href="manifest.json">
 </head>
 <body>
+  <!-- Print Header -->
+  <div class="print-header" style="display:none;text-align:center;padding:1rem 0;border-bottom:3px solid #6366f1;margin-bottom:1rem;">
+    <h1 style="color:#6366f1;font-size:24px;">💼 BudgetWise</h1>
+    <p style="color:#64748b;">Expense Tracker & Budget Planner</p>
+    <p style="color:#64748b;font-size:12px;">© 2026 BudgetWise. All Rights Reserved.</p>
+  </div>
+
   <!-- Navbar -->
   <nav class="navbar navbar-expand-lg sticky-top">
     <div class="container">
@@ -25,6 +33,7 @@
           <li class="nav-item"><a class="nav-link" href="profile.html"><i class="bi bi-person"></i> Profile</a></li>
         </ul>
         <div class="d-flex align-items-center gap-2">
+          <button id="installBtn" class="btn btn-outline-primary btn-sm" style="display:none;" onclick="installApp()"><i class="bi bi-download"></i> Install</button>
           <button id="themeToggle" onclick="toggleDarkMode()"><i class="bi bi-sun-fill"></i></button>
           <div class="dropdown">
             <button class="btn btn-outline-secondary dropdown-toggle" data-bs-toggle="dropdown"><i class="bi bi-person-circle"></i> <span id="navUserName">User</span></button>
@@ -102,9 +111,30 @@
                 <label for="txnNote" class="form-label">Note (optional)</label>
                 <textarea class="form-control" id="txnNote" rows="2" placeholder="Add a note..."></textarea>
               </div>
+              <div class="mb-3">
+                <label for="txnTags" class="form-label">Tags (optional)</label>
+                <input type="text" class="form-control" id="txnTags" placeholder="#food #weekly #essential">
+                <small style="color:var(--text-muted);">Separate with spaces or commas</small>
+              </div>
               <div class="mb-3 form-check">
                 <input type="checkbox" class="form-check-input" id="txnRecurring">
                 <label class="form-check-label" for="txnRecurring" style="color:var(--text-secondary)">Recurring (monthly)</label>
+              </div>
+              <!-- Split Transaction -->
+              <div class="mb-3 form-check">
+                <input type="checkbox" class="form-check-input" id="txnSplit" onchange="$('#splitFields').toggle(this.checked)">
+                <label class="form-check-label" for="txnSplit" style="color:var(--text-secondary)">Split this expense</label>
+              </div>
+              <div id="splitFields" style="display:none;" class="mb-3">
+                <div class="mb-2">
+                  <label class="form-label">Split with</label>
+                  <input type="text" class="form-control" id="splitName" placeholder="Person's name">
+                </div>
+                <div class="mb-2">
+                  <label class="form-label">Your share</label>
+                  <input type="number" class="form-control" id="splitYourShare" placeholder="Your amount" min="0" step="0.01">
+                  <small style="color:var(--text-muted);">Their share is auto-calculated</small>
+                </div>
               </div>
               <button type="submit" class="btn btn-primary w-100"><i class="bi bi-plus-lg"></i> Add Transaction</button>
             </form>
@@ -153,13 +183,23 @@
                 <button class="btn btn-outline-secondary w-100" onclick="resetFilters()" title="Reset"><i class="bi bi-x-circle"></i></button>
               </div>
             </div>
+            <div class="row g-2 mt-2">
+              <div class="col-md-3">
+                <label class="form-label">Filter by Tag</label>
+                <input type="text" class="form-control" id="filterTag" placeholder="#food" oninput="filterTransactions()">
+              </div>
+            </div>
           </div>
         </div>
 
-        <!-- Export Buttons -->
-        <div class="d-flex gap-2 mb-3 no-print">
+        <!-- Export & Bulk Actions -->
+        <div class="d-flex gap-2 mb-3 no-print flex-wrap align-items-center">
           <button class="btn btn-outline-primary btn-sm" onclick="exportCSV()"><i class="bi bi-filetype-csv"></i> Export CSV</button>
           <button class="btn btn-outline-secondary btn-sm" onclick="window.print()"><i class="bi bi-printer"></i> Print</button>
+          <div class="bulk-actions-bar ms-auto">
+            <span id="bulkCount" style="color:var(--text-primary);font-size:0.85rem;"></span>
+            <button class="btn btn-danger btn-sm" onclick="bulkDeleteSelected()"><i class="bi bi-trash"></i> Delete Selected</button>
+          </div>
         </div>
 
         <!-- Table -->
@@ -169,6 +209,7 @@
               <table class="table table-hover mb-0">
                 <thead>
                   <tr>
+                    <th class="no-print"><input type="checkbox" class="form-check-input" id="selectAll" onchange="toggleSelectAll()"></th>
                     <th>#</th>
                     <th>Date</th>
                     <th>Description</th>
@@ -178,8 +219,7 @@
                     <th class="text-end no-print">Actions</th>
                   </tr>
                 </thead>
-                <tbody id="transactionsBody">
-                </tbody>
+                <tbody id="transactionsBody"></tbody>
               </table>
             </div>
           </div>
@@ -236,6 +276,10 @@
             <label class="form-label">Note</label>
             <textarea class="form-control" id="editNote" rows="2"></textarea>
           </div>
+          <div class="mb-3">
+            <label class="form-label">Tags</label>
+            <input type="text" class="form-control" id="editTags" placeholder="#food #weekly">
+          </div>
         </div>
         <div class="modal-footer">
           <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
@@ -263,9 +307,7 @@
       var user = checkAuth();
       applySavedTheme();
       $('#navUserName').text(user.name.split(' ')[0]);
-      // Set default date to today
       $('#txnDate').val(new Date().toISOString().split('T')[0]);
-      // Update category dropdown when type changes
       $('input[name="txnType"]').on('change', function() {
         updateCategoryDropdown(this.value);
       });
