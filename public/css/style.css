@@ -233,6 +233,8 @@ a:hover {
   justify-content: center;
   padding: 2rem;
   background: linear-gradient(135deg, #0f172a 0%, #1e1b4b 50%, #0f172a 100%);
+  position: relative;
+  overflow: hidden;
 }
 
 .auth-card {
@@ -240,6 +242,8 @@ a:hover {
   width: 100%;
   border-radius: 20px;
   overflow: hidden;
+  z-index: 2;
+  position: relative;
 }
 
 .auth-card .card-body {
@@ -291,6 +295,64 @@ a:hover {
   box-shadow: 0 4px 12px rgba(99, 102, 241, 0.4);
 }
 
+/* Floating feature cards on login page */
+.feature-float {
+  position: absolute;
+  background: rgba(30, 41, 59, 0.85);
+  border: 1px solid rgba(99, 102, 241, 0.3);
+  border-radius: 16px;
+  padding: 1rem 1.25rem;
+  color: #f1f5f9;
+  z-index: 1;
+  backdrop-filter: blur(8px);
+  box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+  max-width: 180px;
+  animation: floatUpDown 3s ease-in-out infinite;
+}
+
+.feature-float .feature-icon {
+  font-size: 1.5rem;
+  display: block;
+  margin-bottom: 0.4rem;
+}
+
+.feature-float .feature-title {
+  font-weight: 600;
+  font-size: 0.9rem;
+  color: #f1f5f9;
+}
+
+.feature-float .feature-desc {
+  font-size: 0.75rem;
+  color: #94a3b8;
+}
+
+.feature-float.top-left { top: 12%; left: 5%; animation-delay: 0s; }
+.feature-float.top-right { top: 12%; right: 5%; animation-delay: 0.5s; }
+.feature-float.bottom-left { bottom: 15%; left: 5%; animation-delay: 1s; }
+.feature-float.bottom-right { bottom: 15%; right: 5%; animation-delay: 1.5s; }
+
+@keyframes floatUpDown {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-12px); }
+}
+
+.auth-highlights {
+  display: flex;
+  justify-content: center;
+  gap: 1.5rem;
+  margin-top: 1.5rem;
+  flex-wrap: wrap;
+  z-index: 2;
+  position: relative;
+}
+
+.auth-highlights span {
+  color: #94a3b8;
+  font-size: 0.85rem;
+  font-weight: 500;
+}
+
 /* ============================================
    Form Styles
    ============================================ */
@@ -328,6 +390,40 @@ a:hover {
 .form-check-input:checked {
   background-color: var(--primary);
   border-color: var(--primary);
+}
+
+.form-check-input {
+  background-color: var(--bg-input);
+  border-color: var(--border-color);
+}
+
+.form-check-label {
+  color: var(--text-secondary);
+}
+
+/* Dark mode form enhancements */
+.dark-mode .form-control,
+.dark-mode .form-select {
+  background-color: var(--bg-input) !important;
+  color: var(--text-primary) !important;
+  border-color: var(--border-color);
+}
+
+.dark-mode .form-control:focus,
+.dark-mode .form-select:focus {
+  background-color: var(--bg-input) !important;
+  color: var(--text-primary) !important;
+}
+
+.dark-mode .form-control::placeholder {
+  color: var(--text-muted);
+}
+
+/* Year input fix - ensure full 4 digits visible */
+#budgetYear,
+#reportYear {
+  min-width: 100px;
+  padding: 0.7rem 1rem;
 }
 
 /* Password toggle button */
@@ -449,6 +545,12 @@ a:hover {
   border-bottom: 1px solid var(--border-color);
   padding: 0.85rem 0.75rem;
   vertical-align: middle;
+  color: var(--text-primary);
+}
+
+.table tfoot td {
+  color: var(--text-primary);
+  border-top: 2px solid var(--border-color);
 }
 
 .table-hover tbody tr:hover {
@@ -457,8 +559,25 @@ a:hover {
 
 .dark-mode .table {
   --bs-table-bg: transparent;
+  --bs-table-color: var(--text-primary);
   --bs-table-striped-bg: rgba(255,255,255,0.03);
   --bs-table-hover-bg: rgba(255,255,255,0.05);
+  color: var(--text-primary);
+}
+
+.dark-mode .table thead th {
+  color: var(--text-secondary);
+  border-color: var(--border-color);
+}
+
+.dark-mode .table tbody td {
+  color: var(--text-primary);
+  border-color: var(--border-color);
+}
+
+.dark-mode .table tfoot td {
+  color: var(--text-primary);
+  border-color: var(--border-color);
 }
 
 /* Amount badges */
@@ -571,6 +690,7 @@ a:hover {
 .circular-progress .percentage {
   font-size: 1.2rem;
   font-weight: 700;
+  color: var(--text-primary);
 }
 
 /* ============================================
@@ -588,6 +708,43 @@ a:hover {
   font-weight: 700;
   color: #ffffff;
   margin: 0 auto 1rem;
+}
+
+/* Achievement badges */
+.achievement-badge {
+  text-align: center;
+  padding: 1rem;
+  border-radius: 12px;
+  border: 1px solid var(--border-color);
+  transition: all 0.3s ease;
+  position: relative;
+}
+
+.achievement-badge.unlocked {
+  background: linear-gradient(135deg, rgba(99,102,241,0.08), rgba(34,197,94,0.08));
+  border-color: var(--primary);
+}
+
+.achievement-badge.locked {
+  opacity: 0.5;
+  filter: grayscale(0.8);
+}
+
+.achievement-badge .badge-emoji {
+  font-size: 2rem;
+  display: block;
+  margin-bottom: 0.3rem;
+}
+
+.achievement-badge .badge-name {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.achievement-badge .badge-desc {
+  font-size: 0.7rem;
+  color: var(--text-muted);
 }
 
 /* ============================================
@@ -610,6 +767,47 @@ a:hover {
     opacity: 1;
     transform: translateY(0);
   }
+}
+
+/* Toast notification container */
+.toast-container {
+  position: fixed;
+  top: 1rem;
+  right: 1rem;
+  z-index: 9999;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  max-width: 380px;
+}
+
+.budget-toast {
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: 12px;
+  padding: 0.8rem 1rem;
+  box-shadow: 0 8px 25px var(--shadow-lg);
+  animation: slideInRight 0.3s ease;
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+  color: var(--text-primary);
+  font-size: 0.85rem;
+}
+
+.budget-toast .toast-close {
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  font-size: 1.1rem;
+  margin-left: auto;
+  padding: 0;
+}
+
+@keyframes slideInRight {
+  from { transform: translateX(100%); opacity: 0; }
+  to { transform: translateX(0); opacity: 1; }
 }
 
 /* ============================================
@@ -691,6 +889,15 @@ a:hover {
 
 .modal-header {
   border-bottom-color: var(--border-color);
+  color: var(--text-primary);
+}
+
+.modal-header .modal-title {
+  color: var(--text-primary);
+}
+
+.modal-body {
+  color: var(--text-primary);
 }
 
 .modal-footer {
@@ -703,6 +910,39 @@ a:hover {
 
 .dark-mode .btn-close {
   filter: invert(1) grayscale(100%) brightness(200%);
+}
+
+/* Onboarding modal */
+.onboarding-step {
+  display: none;
+}
+
+.onboarding-step.active {
+  display: block;
+}
+
+.onboarding-progress {
+  display: flex;
+  justify-content: center;
+  gap: 0.5rem;
+  margin-bottom: 1.5rem;
+}
+
+.onboarding-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--border-color);
+  transition: all 0.3s ease;
+}
+
+.onboarding-dot.active {
+  background: var(--primary);
+  transform: scale(1.3);
+}
+
+.onboarding-dot.completed {
+  background: var(--income);
 }
 
 /* ============================================
@@ -895,6 +1135,9 @@ a:hover {
   .navbar-brand {
     font-size: 1.2rem;
   }
+  .feature-float {
+    display: none;
+  }
 }
 
 /* Mobile */
@@ -922,6 +1165,10 @@ a:hover {
 
   .section-title {
     font-size: 1rem;
+  }
+
+  .feature-float {
+    display: none;
   }
 
   /* Bottom nav for mobile */
@@ -986,11 +1233,13 @@ a:hover {
   a[href*="lovable"],
   [class*="lovable"],
   [id*="lovable"],
-  .fixed.bottom-4,
-  .fixed.bottom-0,
+  .fixed, [class*="fixed"],
   [class*="watermark"],
   [class*="branding"],
-  iframe {
+  [class*="badge"],
+  iframe,
+  nav,
+  .toast-container {
     display: none !important;
     visibility: hidden !important;
   }
@@ -1006,10 +1255,17 @@ a:hover {
     border: 1px solid #ddd !important;
     box-shadow: none !important;
     break-inside: avoid;
+    color: #000 !important;
   }
 
   .card:hover {
     transform: none !important;
+  }
+
+  .card-body, .card-title, .section-title,
+  .table, .table td, .table th, .table tfoot td,
+  p, span, div, h1, h2, h3, h4, h5, h6 {
+    color: #000 !important;
   }
 
   /* Show print header */
@@ -1073,11 +1329,10 @@ a:hover {
    ============================================ */
 .bulk-actions-bar {
   display: none;
-  background: rgba(99,102,241,0.1);
-  border: 1px solid var(--primary);
+  background: rgba(239,68,68,0.1);
+  border: 1px solid var(--expense);
   border-radius: 10px;
   padding: 0.5rem 1rem;
-  margin-bottom: 0.75rem;
   align-items: center;
   gap: 1rem;
 }
