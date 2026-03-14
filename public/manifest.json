@@ -1,12 +1,13 @@
 {
-  "name": "BudgetWise",
+  "name": "BudgetWise - Budget Tracker",
   "short_name": "BudgetWise",
-  "description": "Track expenses and plan budgets - Expense Tracker & Budget Planner",
+  "description": "Track expenses, plan budgets, save smarter",
   "start_url": "/login.html",
   "display": "standalone",
+  "orientation": "portrait",
   "background_color": "#0f172a",
   "theme_color": "#6366f1",
-  "orientation": "portrait-primary",
+  "categories": ["finance", "productivity"],
   "icons": [
     {
       "src": "favicon.ico",

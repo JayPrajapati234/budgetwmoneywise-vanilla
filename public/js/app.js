@@ -36,6 +36,9 @@ var currentPage = 1;
 var itemsPerPage = 10;
 var filteredData = [];
 
+// Track shown toast alerts per session to avoid duplicates
+var shownToasts = {};
+
 // ============================================
 // FINANCIAL TIPS - Array of money-saving tips
 // Displayed randomly on dashboard
@@ -79,6 +82,50 @@ function showAlert(message, type) {
 }
 
 // ============================================
+// TOAST NOTIFICATION SYSTEM
+// Shows budget alert toasts in top-right corner
+// ============================================
+
+/**
+ * Show a toast notification in top-right corner
+ * Uses: DOM createElement, setTimeout for auto-dismiss
+ * Syllabus: DOM manipulation, CSS animations, setTimeout
+ * @param {string} message - Toast message
+ * @param {string} type - 'warning', 'danger', 'success', 'info'
+ * @param {string} key - Unique key to prevent duplicate toasts
+ */
+function showToast(message, type, key) {
+  // Don't show same toast twice in one session
+  if (key && shownToasts[key]) return;
+  if (key) shownToasts[key] = true;
+
+  var container = document.getElementById('toastContainer');
+  if (!container) {
+    container = document.createElement('div');
+    container.id = 'toastContainer';
+    container.className = 'toast-container';
+    document.body.appendChild(container);
+  }
+
+  var colors = { warning: '#eab308', danger: '#ef4444', success: '#22c55e', info: '#3b82f6' };
+  var toast = document.createElement('div');
+  toast.className = 'budget-toast';
+  toast.style.borderLeft = '4px solid ' + (colors[type] || colors.info);
+  toast.innerHTML = '<span>' + message + '</span><button class="toast-close" onclick="this.parentElement.remove()">×</button>';
+  container.appendChild(toast);
+
+  // Auto dismiss after 5 seconds
+  setTimeout(function() {
+    if (toast.parentElement) {
+      toast.style.opacity = '0';
+      toast.style.transform = 'translateX(100%)';
+      toast.style.transition = 'all 0.3s ease';
+      setTimeout(function() { if (toast.parentElement) toast.remove(); }, 300);
+    }
+  }, 5000);
+}
+
+// ============================================
 // FOOTER HTML - Reusable footer for all pages
 // ============================================
 
@@ -110,17 +157,62 @@ function getFooterHTML() {
 }
 
 /**
- * Insert footer before mobile bottom nav on every page
+ * Insert footer ONCE before mobile bottom nav on every page
+ * Checks if footer already exists to prevent duplication
  * Uses jQuery to append footer HTML before the mobile nav element
- * Syllabus: jQuery .before() method, DOM insertion
+ * Syllabus: jQuery .before() method, DOM insertion, conditional check
  */
 function insertFooter() {
+  // BUG FIX: Prevent duplicate footers by checking if one already exists
+  if (document.querySelector('.app-footer')) return;
+
   var mobileNav = document.querySelector('.mobile-bottom-nav');
   if (mobileNav) {
     $(mobileNav).before(getFooterHTML());
   } else {
     $('body').append(getFooterHTML());
   }
+}
+
+// ============================================
+// ANIMATED NUMBER COUNTER
+// Counts from 0 to target value with easing
+// ============================================
+
+/**
+ * Animate a number counter on a DOM element
+ * Uses requestAnimationFrame for smooth 60fps animation
+ * Syllabus: requestAnimationFrame, Math functions, DOM manipulation
+ * @param {string} elementId - DOM element ID to animate
+ * @param {number} target - Target number to count to
+ * @param {boolean} isPercent - Whether to format as percentage
+ * @param {number} duration - Animation duration in ms (default 1500)
+ */
+function animateCounter(elementId, target, isPercent, duration) {
+  var el = document.getElementById(elementId);
+  if (!el) return;
+  duration = duration || 1500;
+  var startTime = null;
+
+  function easeOut(t) { return 1 - Math.pow(1 - t, 3); }
+
+  function step(timestamp) {
+    if (!startTime) startTime = timestamp;
+    var progress = Math.min((timestamp - startTime) / duration, 1);
+    var easedProgress = easeOut(progress);
+    var current = target * easedProgress;
+
+    if (isPercent) {
+      el.textContent = current.toFixed(1) + '%';
+    } else {
+      el.textContent = formatCurrency(current);
+    }
+
+    if (progress < 1) {
+      requestAnimationFrame(step);
+    }
+  }
+  requestAnimationFrame(step);
 }
 
 // ============================================
@@ -139,6 +231,11 @@ function initDashboard() {
   var year = now.getFullYear();
   var transactions = getTransactions();
 
+  // Check for first-time user onboarding
+  if (!localStorage.getItem('onboardingDone') && transactions.length === 0) {
+    showOnboardingModal();
+  }
+
   // Show sample data banner if no transactions exist
   if (transactions.length === 0) {
     $('#sampleBanner').show();
@@ -148,13 +245,13 @@ function initDashboard() {
   var income = getTotalIncome(month, year);
   var expenses = getTotalExpenses(month, year);
   var balance = income - expenses;
-  var savingsRate = income > 0 ? ((income - expenses) / income * 100).toFixed(1) : 0;
+  var savingsRate = income > 0 ? ((income - expenses) / income * 100) : 0;
 
-  // Update summary cards using jQuery text()
-  $('#totalBalance').text(formatCurrency(balance));
-  $('#totalIncome').text(formatCurrency(income));
-  $('#totalExpenses').text(formatCurrency(expenses));
-  $('#savingsRate').text(savingsRate + '%');
+  // Animate counters on stat cards
+  animateCounter('totalBalance', balance, false);
+  animateCounter('totalIncome', income, false);
+  animateCounter('totalExpenses', expenses, false);
+  animateCounter('savingsRate', savingsRate, true);
 
   // Recent transactions (last 5) sorted by date descending
   var monthTxns = getTransactionsByMonth(month, year);
@@ -217,8 +314,143 @@ function initDashboard() {
   // Render recurring bills widget
   renderRecurringBills(month, year);
 
-  // Insert footer
+  // Insert footer (only once)
   insertFooter();
+}
+
+// ============================================
+// ONBOARDING WELCOME MODAL
+// ============================================
+
+/**
+ * Show the multi-step onboarding modal for first-time users
+ * Step 1: Name + Income, Step 2: Budget setup, Step 3: Summary
+ * Syllabus: Bootstrap Modal API, multi-step forms, localStorage
+ */
+function showOnboardingModal() {
+  var html = '<div class="modal fade" id="onboardingModal" tabindex="-1" data-bs-backdrop="static" data-bs-keyboard="false">' +
+    '<div class="modal-dialog modal-dialog-centered">' +
+    '<div class="modal-content">' +
+    '<div class="modal-body p-4">' +
+    '<div class="onboarding-progress" id="onboardingProgress">' +
+    '<div class="onboarding-dot active" id="dot1"></div>' +
+    '<div class="onboarding-dot" id="dot2"></div>' +
+    '<div class="onboarding-dot" id="dot3"></div>' +
+    '</div>' +
+
+    // Step 1
+    '<div class="onboarding-step active" id="obStep1">' +
+    '<h4 class="text-center mb-3" style="color:var(--text-primary);">👋 Welcome to BudgetWise!</h4>' +
+    '<p class="text-center mb-4" style="color:var(--text-muted);">Let\'s set up your account</p>' +
+    '<div class="mb-3"><label class="form-label">Your Full Name</label>' +
+    '<input type="text" class="form-control" id="obName" placeholder="Enter your name" required></div>' +
+    '<div class="mb-3"><label class="form-label">Monthly Income</label>' +
+    '<div class="input-group"><span class="input-group-text">₹</span>' +
+    '<input type="number" class="form-control" id="obIncome" placeholder="50000" min="0"></div></div>' +
+    '<div class="mb-3"><label class="form-label">Currency</label>' +
+    '<input type="text" class="form-control" value="₹ INR - Indian Rupee" readonly style="opacity:0.7;"></div>' +
+    '<button class="btn btn-primary w-100" onclick="onboardingNext(2)">Next →</button>' +
+    '</div>' +
+
+    // Step 2
+    '<div class="onboarding-step" id="obStep2">' +
+    '<h4 class="text-center mb-3" style="color:var(--text-primary);">📊 Set Your Monthly Budgets</h4>' +
+    '<p class="text-center mb-3" style="color:var(--text-muted);">Suggested amounts - feel free to edit</p>' +
+    '<div class="row g-2">' +
+    '<div class="col-6"><label class="form-label">🍔 Food</label><input type="number" class="form-control ob-budget" data-cat="Food" value="5000"></div>' +
+    '<div class="col-6"><label class="form-label">🚗 Transport</label><input type="number" class="form-control ob-budget" data-cat="Transport" value="3000"></div>' +
+    '<div class="col-6"><label class="form-label">📄 Bills</label><input type="number" class="form-control ob-budget" data-cat="Bills" value="5000"></div>' +
+    '<div class="col-6"><label class="form-label">🎮 Entertainment</label><input type="number" class="form-control ob-budget" data-cat="Entertainment" value="2000"></div>' +
+    '<div class="col-6"><label class="form-label">🛍️ Shopping</label><input type="number" class="form-control ob-budget" data-cat="Shopping" value="5000"></div>' +
+    '<div class="col-6"><label class="form-label">🏠 Rent</label><input type="number" class="form-control ob-budget" data-cat="Rent" value="10000"></div>' +
+    '</div>' +
+    '<div class="d-flex gap-2 mt-3">' +
+    '<button class="btn btn-outline-secondary flex-fill" onclick="onboardingNext(1)">← Back</button>' +
+    '<button class="btn btn-primary flex-fill" onclick="onboardingNext(3)">Next →</button>' +
+    '</div>' +
+    '</div>' +
+
+    // Step 3
+    '<div class="onboarding-step" id="obStep3">' +
+    '<h4 class="text-center mb-3" style="color:var(--text-primary);">✅ You\'re All Set!</h4>' +
+    '<div class="card mb-3"><div class="card-body text-center">' +
+    '<p style="font-size:1.3rem;color:var(--text-primary);" id="obWelcomeText">Welcome! 👋</p>' +
+    '<p style="color:var(--text-secondary);">Monthly Income: <strong id="obIncomeDisplay">₹0</strong></p>' +
+    '<p style="color:var(--text-secondary);">Total Budget Set: <strong id="obBudgetDisplay">₹0</strong></p>' +
+    '</div></div>' +
+    '<button class="btn btn-primary w-100" onclick="completeOnboarding()">🚀 Go to Dashboard</button>' +
+    '</div>' +
+
+    '</div></div></div></div>';
+
+  $('body').append(html);
+  var modal = new bootstrap.Modal(document.getElementById('onboardingModal'));
+  modal.show();
+}
+
+/**
+ * Navigate between onboarding steps
+ * Updates progress dots and shows/hides step content
+ * Syllabus: jQuery show/hide, classList manipulation
+ * @param {number} step - Step number (1, 2, or 3)
+ */
+function onboardingNext(step) {
+  // Validate step 1
+  if (step === 2) {
+    var name = $('#obName').val().trim();
+    if (!name) { showAlert('Please enter your name.', 'danger'); return; }
+  }
+
+  // Update step 3 summary
+  if (step === 3) {
+    var name = $('#obName').val().trim();
+    var income = parseFloat($('#obIncome').val()) || 0;
+    var totalBudget = 0;
+    $('.ob-budget').each(function() { totalBudget += parseFloat($(this).val()) || 0; });
+    $('#obWelcomeText').text('Welcome, ' + name + '! 👋');
+    $('#obIncomeDisplay').text(formatCurrency(income));
+    $('#obBudgetDisplay').text(formatCurrency(totalBudget));
+  }
+
+  $('.onboarding-step').removeClass('active');
+  $('#obStep' + step).addClass('active');
+
+  // Update dots
+  for (var i = 1; i <= 3; i++) {
+    var dot = document.getElementById('dot' + i);
+    dot.className = 'onboarding-dot';
+    if (i < step) dot.classList.add('completed');
+    if (i === step) dot.classList.add('active');
+  }
+}
+
+/**
+ * Complete onboarding - save all data and close modal
+ * Saves user profile, budgets, and marks onboarding as done
+ * Syllabus: localStorage, Object manipulation, form data collection
+ */
+function completeOnboarding() {
+  var name = $('#obName').val().trim();
+  var income = parseFloat($('#obIncome').val()) || 0;
+  var now = new Date();
+  var month = now.getMonth() + 1;
+  var year = now.getFullYear();
+
+  // Update user profile
+  updateUser({ name: name, monthlyIncome: income });
+  $('#navUserName').text(name.split(' ')[0]);
+
+  // Save budgets
+  $('.ob-budget').each(function() {
+    var cat = $(this).data('cat');
+    var amt = parseFloat($(this).val()) || 0;
+    if (amt > 0) saveBudget(cat, amt, month, year);
+  });
+
+  localStorage.setItem('onboardingDone', 'true');
+  bootstrap.Modal.getInstance(document.getElementById('onboardingModal')).hide();
+  $('#onboardingModal').remove();
+  initDashboard();
 }
 
 /**
@@ -260,7 +492,6 @@ function renderWeekSummary() {
   var thisWeek = getThisWeekTransactions();
   var lastWeek = getLastWeekTransactions();
 
-  // Calculate this week's expense total
   var thisWeekTotal = 0;
   var thisWeekCount = 0;
   var weekCategories = {};
@@ -272,7 +503,6 @@ function renderWeekSummary() {
     }
   });
 
-  // Find top spending category this week
   var topCat = '-';
   var topAmount = 0;
   for (var cat in weekCategories) {
@@ -282,7 +512,6 @@ function renderWeekSummary() {
     }
   }
 
-  // Calculate last week's expense total for comparison
   var lastWeekTotal = 0;
   lastWeek.forEach(function(t) {
     if (t.type === 'expense') {
@@ -290,7 +519,6 @@ function renderWeekSummary() {
     }
   });
 
-  // Calculate percentage change
   var change = lastWeekTotal > 0 ? ((thisWeekTotal - lastWeekTotal) / lastWeekTotal * 100).toFixed(0) : 0;
   var changeIcon = change > 0 ? '🔴 +' + change + '%' : change < 0 ? '🟢 ' + change + '%' : '➖ 0%';
 
@@ -304,7 +532,6 @@ function renderWeekSummary() {
 
 /**
  * Render "Recurring Bills Due" widget on dashboard
- * Shows recurring transactions and their payment status
  * Syllabus: Array.filter(), conditional rendering, DOM manipulation
  */
 function renderRecurringBills(month, year) {
@@ -312,7 +539,6 @@ function renderRecurringBills(month, year) {
   if (!container.length) return;
 
   var allTxns = getTransactions();
-  // Get unique recurring transactions
   var recurringMap = {};
   allTxns.forEach(function(t) {
     if (t.recurring && t.type === 'expense') {
@@ -330,7 +556,6 @@ function renderRecurringBills(month, year) {
     return;
   }
 
-  // Check which are paid this month
   var monthTxns = getTransactionsByMonth(month, year);
   var paidDescs = {};
   monthTxns.forEach(function(t) {
@@ -360,7 +585,6 @@ function renderRecurringBills(month, year) {
 
 /**
  * Render budget progress bars on dashboard
- * Shows each budget category with a progress bar and spent/total amounts
  * Syllabus: Array.forEach(), conditional CSS classes, DOM manipulation
  */
 function renderBudgetProgress(month, year) {
@@ -391,26 +615,45 @@ function renderBudgetProgress(month, year) {
 }
 
 /**
- * Check if any budget exceeds 80% and show warning alerts
- * Uses Bootstrap alert styling for visual warnings
- * Syllabus: Conditional logic, percentage calculation, DOM manipulation
+ * Check budget limits and show toast notifications
+ * Triggers on dashboard load and after adding transactions
+ * Syllabus: Conditional logic, percentage calculation, toast UI
  */
 function checkBudgetAlerts(month, year) {
   var budgets = getBudgetsByMonth(month, year);
   var alerts = $('#budgetAlerts');
-  alerts.empty();
+  if (alerts.length) alerts.empty();
+
+  var allUnder50 = true;
 
   budgets.forEach(function(b) {
     var spent = getSpentAmount(b.category, month, year);
     var pct = b.amount > 0 ? (spent / b.amount * 100) : 0;
-    if (pct >= 80) {
-      var type = pct >= 100 ? 'danger' : 'warning';
-      var msg = pct >= 100
-        ? '<i class="bi bi-exclamation-triangle-fill"></i> <strong>' + b.category + '</strong> is over budget! Spent ' + formatCurrency(spent) + ' of ' + formatCurrency(b.amount)
-        : '<i class="bi bi-exclamation-circle-fill"></i> <strong>' + b.category + '</strong> is at ' + pct.toFixed(0) + '% of budget';
-      alerts.append('<div class="alert alert-' + type + ' custom-alert py-2 mb-2">' + msg + '</div>');
+
+    if (pct > 50) allUnder50 = false;
+
+    if (pct >= 100) {
+      var over = spent - b.amount;
+      showToast('🚨 Alert! Your <strong>' + b.category + '</strong> budget has been exceeded by ' + formatCurrency(over) + '!', 'danger', 'over_' + b.category);
+    } else if (pct >= 80) {
+      showToast('⚠️ Warning! You\'ve used ' + pct.toFixed(0) + '% of your <strong>' + b.category + '</strong> budget this month.', 'warning', 'warn_' + b.category);
     }
   });
+
+  // Check savings rate
+  var income = getTotalIncome(month, year);
+  var expenses = getTotalExpenses(month, year);
+  if (income > 0) {
+    var savingsRate = (income - expenses) / income * 100;
+    if (savingsRate < 20) {
+      showToast('💡 Tip: Your savings rate is below 20%. Consider reducing expenses.', 'info', 'low_savings');
+    }
+  }
+
+  // All under 50% congrats
+  if (budgets.length > 0 && allUnder50) {
+    showToast('✅ Great job! You\'re well under budget in all categories!', 'success', 'all_under');
+  }
 }
 
 // ============================================
@@ -419,7 +662,6 @@ function checkBudgetAlerts(month, year) {
 
 /**
  * Update the category dropdown based on selected transaction type
- * Shows income or expense categories accordingly
  * Syllabus: jQuery show/hide, DOM manipulation, conditional logic
  * @param {string} type - 'income' or 'expense'
  */
@@ -436,7 +678,7 @@ function updateCategoryDropdown(type) {
 }
 
 /**
- * Initialize the transactions page - load and display all transactions
+ * Initialize the transactions page
  * Syllabus: Function calls, page initialization pattern
  */
 function initTransactionsPage() {
@@ -446,7 +688,7 @@ function initTransactionsPage() {
 
 /**
  * Handle adding a new transaction from the form
- * Validates required fields, saves to localStorage, resets form
+ * Also triggers budget alert checks after saving
  * Syllabus: Event handling, form validation, DOM manipulation
  * @param {Event} event - Form submit event
  */
@@ -461,7 +703,6 @@ function handleAddTransaction(event) {
   var recurring = $('#txnRecurring').is(':checked');
   var tags = $('#txnTags') ? $('#txnTags').val().trim() : '';
 
-  // Split transaction fields
   var splitWith = '';
   var splitShare = 0;
   if ($('#txnSplit').is(':checked')) {
@@ -469,7 +710,6 @@ function handleAddTransaction(event) {
     splitShare = parseFloat($('#splitYourShare').val()) || 0;
   }
 
-  // Validate required fields
   if (!desc || !amount || !category || !date) {
     showAlert('Please fill in all required fields.', 'danger');
     return;
@@ -478,23 +718,25 @@ function handleAddTransaction(event) {
   addTransaction(desc, amount, type, category, date, note, recurring, tags, splitWith, splitShare);
   showAlert('Transaction added successfully!', 'success');
 
-  // Reset form to defaults
+  // Check budget alerts after adding expense
+  if (type === 'expense') {
+    var txnDate = new Date(date);
+    checkBudgetAlerts(txnDate.getMonth() + 1, txnDate.getFullYear());
+  }
+
+  // Reset form
   $('#transactionForm')[0].reset();
   $('#txnDate').val(new Date().toISOString().split('T')[0]);
   $('input[name="txnType"][value="expense"]').prop('checked', true);
   updateCategoryDropdown('expense');
   $('#splitFields').hide();
 
-  // Refresh table
   filterTransactions();
 }
 
 /**
  * Filter transactions based on all filter inputs
- * Combines multiple filter criteria using Array.filter()
- * Supports search, type, category, date range, and tag filtering
  * Syllabus: Array.filter() with multiple conditions, String methods
- * @returns {void}
  */
 function filterTransactions() {
   var search = ($('#filterSearch').val() || '').toLowerCase();
@@ -506,23 +748,16 @@ function filterTransactions() {
 
   var all = getTransactions();
 
-  // Apply all filters using .filter() method
   filteredData = all.filter(function(t) {
-    // Search filter - checks description
     if (search && t.description.toLowerCase().indexOf(search) === -1) return false;
-    // Type filter
     if (type !== 'all' && t.type !== type) return false;
-    // Category filter
     if (category !== 'all' && t.category !== category) return false;
-    // Date range filter
     if (from && t.date < from) return false;
     if (to && t.date > to) return false;
-    // Tag filter
     if (tagFilter && (!t.tags || t.tags.toLowerCase().indexOf(tagFilter) === -1)) return false;
     return true;
   });
 
-  // Sort by date descending (newest first)
   filteredData.sort(function(a, b) {
     return new Date(b.date) - new Date(a.date);
   });
@@ -532,8 +767,8 @@ function filterTransactions() {
 }
 
 /**
- * Reset all filters to default values and refresh table
- * Syllabus: jQuery .val() for setting values, function calls
+ * Reset all filters
+ * Syllabus: jQuery .val() for setting values
  */
 function resetFilters() {
   $('#filterSearch').val('');
@@ -547,8 +782,7 @@ function resetFilters() {
 
 /**
  * Render the transactions table with pagination and bulk selection
- * Displays filtered transactions with pagination controls
- * Syllabus: Array.slice() for pagination, DOM manipulation, event handling
+ * Syllabus: Array.slice() for pagination, DOM manipulation
  */
 function renderTransactionsTable() {
   var tbody = $('#transactionsBody');
@@ -561,17 +795,14 @@ function renderTransactionsTable() {
     return;
   }
 
-  // Calculate pagination boundaries
   var totalPages = Math.ceil(filteredData.length / itemsPerPage);
   var start = (currentPage - 1) * itemsPerPage;
   var end = start + itemsPerPage;
   var pageData = filteredData.slice(start, end);
 
-  // Render table rows with checkboxes for bulk actions
   pageData.forEach(function(t, index) {
     var amountClass = t.type === 'income' ? 'amount-income' : 'amount-expense';
     var prefix = t.type === 'income' ? '+' : '-';
-    // Render tags as badges
     var tagsHtml = '';
     if (t.tags) {
       t.tags.split(/[\s,]+/).forEach(function(tag) {
@@ -580,7 +811,6 @@ function renderTransactionsTable() {
         }
       });
     }
-    // Split info
     var splitInfo = '';
     if (t.splitWith) {
       splitInfo = '<br><small style="color:var(--text-muted);">Split with ' + t.splitWith + ' (Your share: ' + formatCurrency(t.splitShare) + ')</small>';
@@ -608,8 +838,7 @@ function renderTransactionsTable() {
 }
 
 /**
- * Update bulk actions bar visibility based on selected checkboxes
- * Shows/hides the bulk delete button
+ * Update bulk actions bar visibility
  * Syllabus: jQuery selectors, conditional DOM manipulation
  */
 function updateBulkActions() {
@@ -617,13 +846,16 @@ function updateBulkActions() {
   if (checked > 0) {
     $('.bulk-actions-bar').addClass('visible');
     $('#bulkCount').text(checked + ' selected');
+    // Update delete button text with count
+    $('.bulk-actions-bar .btn-danger').html('<i class="bi bi-trash"></i> 🗑️ Delete Selected (' + checked + ')');
   } else {
     $('.bulk-actions-bar').removeClass('visible');
+    $('#selectAll').prop('checked', false);
   }
 }
 
 /**
- * Toggle select/deselect all transaction checkboxes
+ * Toggle select/deselect all
  * Syllabus: jQuery .prop(), .each() methods
  */
 function toggleSelectAll() {
@@ -634,8 +866,7 @@ function toggleSelectAll() {
 
 /**
  * Delete all selected transactions after confirmation
- * Uses confirm() dialog for safety
- * Syllabus: Array manipulation, confirm dialog, DOM updates
+ * Syllabus: Array manipulation, confirm dialog
  */
 function bulkDeleteSelected() {
   var ids = [];
@@ -644,7 +875,7 @@ function bulkDeleteSelected() {
   });
   if (ids.length === 0) return;
 
-  if (confirm('Are you sure you want to delete ' + ids.length + ' transaction(s)?')) {
+  if (confirm('Are you sure you want to delete ' + ids.length + ' transaction(s)? This cannot be undone.')) {
     deleteMultipleTransactions(ids);
     showAlert(ids.length + ' transaction(s) deleted.', 'success');
     $('#selectAll').prop('checked', false);
@@ -653,36 +884,26 @@ function bulkDeleteSelected() {
 }
 
 /**
- * Render pagination buttons below the transactions table
- * Syllabus: for loop, conditional CSS classes, DOM manipulation
- * @param {number} totalPages - Total number of pages
+ * Render pagination buttons
+ * Syllabus: for loop, conditional CSS classes
+ * @param {number} totalPages - Total pages
  */
 function renderPagination(totalPages) {
   var pagination = $('#pagination');
   pagination.empty();
-
   if (totalPages <= 1) return;
 
-  // Previous button
-  pagination.append('<li class="page-item ' + (currentPage === 1 ? 'disabled' : '') + '">' +
-    '<a class="page-link" href="#" onclick="goToPage(' + (currentPage - 1) + ')">«</a></li>');
-
-  // Page number buttons
+  pagination.append('<li class="page-item ' + (currentPage === 1 ? 'disabled' : '') + '"><a class="page-link" href="#" onclick="goToPage(' + (currentPage - 1) + ')">«</a></li>');
   for (var i = 1; i <= totalPages; i++) {
-    pagination.append('<li class="page-item ' + (i === currentPage ? 'active' : '') + '">' +
-      '<a class="page-link" href="#" onclick="goToPage(' + i + ')">' + i + '</a></li>');
+    pagination.append('<li class="page-item ' + (i === currentPage ? 'active' : '') + '"><a class="page-link" href="#" onclick="goToPage(' + i + ')">' + i + '</a></li>');
   }
-
-  // Next button
-  pagination.append('<li class="page-item ' + (currentPage === totalPages ? 'disabled' : '') + '">' +
-    '<a class="page-link" href="#" onclick="goToPage(' + (currentPage + 1) + ')">»</a></li>');
+  pagination.append('<li class="page-item ' + (currentPage === totalPages ? 'disabled' : '') + '"><a class="page-link" href="#" onclick="goToPage(' + (currentPage + 1) + ')">»</a></li>');
 }
 
 /**
- * Navigate to a specific page in the transactions table
- * Scrolls to top of table after navigation
- * Syllabus: Boundary checking, jQuery animate for smooth scroll
- * @param {number} page - Page number to navigate to
+ * Navigate to a specific page
+ * Syllabus: Boundary checking, jQuery animate
+ * @param {number} page - Page number
  */
 function goToPage(page) {
   var totalPages = Math.ceil(filteredData.length / itemsPerPage);
@@ -693,10 +914,9 @@ function goToPage(page) {
 }
 
 /**
- * Open the edit modal and populate with transaction data
- * Finds transaction by ID and fills all form fields
- * Syllabus: Array.find(), Bootstrap Modal API, jQuery .val()
- * @param {number} id - Transaction ID to edit
+ * Open edit modal with transaction data
+ * Syllabus: Array.find(), Bootstrap Modal API
+ * @param {number} id - Transaction ID
  */
 function openEditModal(id) {
   var transactions = getTransactions();
@@ -717,9 +937,8 @@ function openEditModal(id) {
 }
 
 /**
- * Save edited transaction data back to localStorage
- * Hides the modal and refreshes the table
- * Syllabus: parseInt/parseFloat for type conversion, Object creation
+ * Save edited transaction
+ * Syllabus: parseInt/parseFloat, Object creation
  */
 function saveEditTransaction() {
   var id = parseInt($('#editId').val());
@@ -741,9 +960,8 @@ function saveEditTransaction() {
 
 /**
  * Confirm and delete a single transaction
- * Uses confirm() dialog for user safety
- * Syllabus: confirm() built-in function, event-driven deletion
- * @param {number} id - Transaction ID to delete
+ * Syllabus: confirm() built-in function
+ * @param {number} id - Transaction ID
  */
 function confirmDelete(id) {
   if (confirm('Are you sure you want to delete this transaction?')) {
@@ -758,15 +976,13 @@ function confirmDelete(id) {
 // ============================================
 
 /**
- * Initialize the budget page - render form inputs and overview cards
- * Shows each expense category with current budget and last month's spending
+ * Initialize the budget page
  * Syllabus: Array.forEach(), DOM manipulation, function composition
  */
 function initBudgetPage() {
   var month = parseInt($('#budgetMonth').val());
   var year = parseInt($('#budgetYear').val());
 
-  // Render budget input fields for each expense category
   var inputsContainer = $('#budgetInputs');
   inputsContainer.empty();
 
@@ -785,20 +1001,14 @@ function initBudgetPage() {
     );
   });
 
-  // Render budget overview cards
   renderBudgetOverview(month, year);
-
-  // Render savings goals
   renderSavingsGoals();
-
-  // Insert footer
   insertFooter();
 }
 
 /**
- * Handle saving all budgets from the form
- * Iterates all budget input fields and saves each to localStorage
- * Syllabus: jQuery .each(), .data() for data attributes, form handling
+ * Handle saving all budgets
+ * Syllabus: jQuery .each(), .data(), form handling
  * @param {Event} event - Form submit event
  */
 function handleSaveBudgets(event) {
@@ -819,9 +1029,8 @@ function handleSaveBudgets(event) {
 }
 
 /**
- * Render budget overview cards with circular progress and summary
- * Shows each category's spending vs budget with visual indicators
- * Syllabus: Percentage calculations, conic-gradient CSS, conditional styling
+ * Render budget overview cards with circular progress
+ * Syllabus: Percentage calculations, conic-gradient CSS
  * @param {number} month - Month (1-12)
  * @param {number} year - Year
  */
@@ -840,7 +1049,6 @@ function renderBudgetOverview(month, year) {
     totalBudget += b.amount;
     totalSpent += spent;
 
-    // Determine status based on percentage
     var statusClass = 'on-track';
     var statusBadge = '<span class="badge-income">On Track</span>';
     var progressColor = '#22c55e';
@@ -874,7 +1082,6 @@ function renderBudgetOverview(month, year) {
     );
   });
 
-  // Update overall summary
   var totalRemaining = totalBudget - totalSpent;
   var overallPct = totalBudget > 0 ? (totalSpent / totalBudget * 100) : 0;
   var barClass = overallPct > 80 ? 'bg-danger' : overallPct > 50 ? 'bg-warning' : 'bg-success';
@@ -891,7 +1098,6 @@ function renderBudgetOverview(month, year) {
 
 /**
  * Render savings goals section on budget page
- * Shows goal cards with progress bars and milestone badges
  * Syllabus: Array.forEach(), Date arithmetic, DOM manipulation
  */
 function renderSavingsGoals() {
@@ -910,13 +1116,11 @@ function renderSavingsGoals() {
     var pct = g.target > 0 ? (g.saved / g.target * 100) : 0;
     var barColor = pct >= 100 ? 'bg-success' : pct >= 75 ? 'bg-info' : pct >= 50 ? 'bg-primary' : 'bg-warning';
 
-    // Calculate days remaining
     var today = new Date();
     var deadline = new Date(g.deadline);
     var daysLeft = Math.ceil((deadline - today) / (1000 * 60 * 60 * 24));
     var daysText = daysLeft > 0 ? daysLeft + ' days left' : '<span class="text-expense">Overdue</span>';
 
-    // Milestone badges
     var milestones = '';
     [25, 50, 75, 100].forEach(function(m) {
       var cls = pct >= m ? 'achieved' : 'pending';
@@ -950,9 +1154,8 @@ function renderSavingsGoals() {
 }
 
 /**
- * Handle adding a new savings goal from the form
- * Validates input and saves to localStorage
- * Syllabus: Form handling, validation, function calls
+ * Handle adding a new savings goal
+ * Syllabus: Form handling, validation
  * @param {Event} event - Form submit event
  */
 function handleAddGoal(event) {
@@ -975,8 +1178,8 @@ function handleAddGoal(event) {
 }
 
 /**
- * Open modal to add money to a savings goal
- * Syllabus: Bootstrap Modal API, data attributes
+ * Open modal to add money to a goal
+ * Syllabus: Bootstrap Modal API
  * @param {number} goalId - Goal ID
  */
 function openAddMoneyModal(goalId) {
@@ -987,8 +1190,8 @@ function openAddMoneyModal(goalId) {
 }
 
 /**
- * Handle adding money to a savings goal
- * Syllabus: Form handling, parseFloat, function calls
+ * Handle adding money to a goal
+ * Syllabus: Form handling, parseFloat
  */
 function handleAddMoney() {
   var goalId = parseInt($('#addMoneyGoalId').val());
@@ -1005,8 +1208,8 @@ function handleAddMoney() {
 
 /**
  * Handle deleting a savings goal
- * Syllabus: confirm dialog, function calls
- * @param {number} goalId - Goal ID to delete
+ * Syllabus: confirm dialog
+ * @param {number} goalId - Goal ID
  */
 function handleDeleteGoal(goalId) {
   if (confirm('Delete this savings goal?')) {
@@ -1022,8 +1225,7 @@ function handleDeleteGoal(goalId) {
 
 /**
  * Generate comprehensive report for selected month/year
- * Updates all charts, summary stats, tables, and comparison data
- * Syllabus: Multiple function calls, data aggregation, Chart.js integration
+ * Syllabus: Multiple function calls, data aggregation, Chart.js
  */
 function generateReport() {
   var month = parseInt($('#reportMonth').val());
@@ -1035,13 +1237,11 @@ function generateReport() {
   var txns = getTransactionsByMonth(month, year);
   var savingsRate = income > 0 ? ((income - expenses) / income * 100).toFixed(1) : '0.0';
 
-  // Update summary stats
   $('#reportIncome').text(formatCurrency(income));
   $('#reportExpenses').text(formatCurrency(expenses));
   $('#reportSavings').text(formatCurrency(savings));
   $('#reportCount').text(txns.length);
 
-  // Pie Chart - Expense breakdown by category
   var spending = getSpendingByCategory(month, year);
   var catLabels = Object.keys(spending);
   var catData = Object.values(spending);
@@ -1049,7 +1249,6 @@ function generateReport() {
     createPieChart('reportPieChart', catLabels, catData);
   }
 
-  // Bar Chart - Last 6 months income vs expenses
   var barLabels = [];
   var barIncome = [];
   var barExpense = [];
@@ -1063,7 +1262,6 @@ function generateReport() {
   }
   createBarChart('reportBarChart', barLabels, barIncome, barExpense);
 
-  // Line Chart - Daily spending for selected month
   var daily = getDailySpending(month, year);
   var dayLabels = [];
   for (var d = 1; d <= daily.length; d++) {
@@ -1071,7 +1269,6 @@ function generateReport() {
   }
   createLineChart('reportLineChart', dayLabels, daily);
 
-  // Horizontal Bar - Top spending categories sorted
   var sorted = catLabels.map(function(label, i) {
     return { label: label, value: catData[i] };
   }).sort(function(a, b) { return b.value - a.value; });
@@ -1081,33 +1278,19 @@ function generateReport() {
     createHorizontalBar('reportHorizontalBar', hLabels, hData);
   }
 
-  // Monthly summary table
   renderReportSummaryTable(month, year);
-
-  // Month vs Last Month comparison
   renderMonthComparison(month, year);
-
-  // Yearly overview table
   renderYearlyOverview(year);
-
-  // Biggest expense of the month
   renderBiggestExpense(month, year);
-
-  // Spending streak
   renderSpendingStreak(month, year);
-
-  // Financial health score
   renderHealthScore(month, year);
-
-  // Insert footer
   insertFooter();
 }
 
 /**
- * Render the monthly summary table with budget vs spent
- * Shows each category with budget, spent, remaining, and status
+ * Render monthly summary table with budget vs spent
  * Syllabus: Array.forEach(), conditional styling, DOM table manipulation
- * @param {number} month - Month (1-12)
+ * @param {number} month - Month
  * @param {number} year - Year
  */
 function renderReportSummaryTable(month, year) {
@@ -1157,10 +1340,9 @@ function renderReportSummaryTable(month, year) {
 
 /**
  * Render month vs last month comparison table
- * Shows percentage change for income and each expense category
- * Syllabus: Percentage calculation, conditional rendering, Date arithmetic
- * @param {number} month - Current month
- * @param {number} year - Current year
+ * Syllabus: Percentage calculation, conditional rendering
+ * @param {number} month - Month
+ * @param {number} year - Year
  */
 function renderMonthComparison(month, year) {
   var container = $('#monthComparison');
@@ -1171,13 +1353,10 @@ function renderMonthComparison(month, year) {
   var lastYear = month === 1 ? year - 1 : year;
 
   var rows = [];
-
-  // Income comparison
   var currIncome = getTotalIncome(month, year);
   var prevIncome = getTotalIncome(lastMonth, lastYear);
   rows.push({ cat: 'Income', curr: currIncome, prev: prevIncome, isIncome: true });
 
-  // Expense category comparisons
   expenseCategories.forEach(function(cat) {
     var curr = getSpentAmount(cat, month, year);
     var prev = getSpentAmount(cat, lastMonth, lastYear);
@@ -1192,9 +1371,7 @@ function renderMonthComparison(month, year) {
   rows.forEach(function(r) {
     var change = r.prev > 0 ? ((r.curr - r.prev) / r.prev * 100).toFixed(0) : (r.curr > 0 ? '+100' : '0');
     var changeNum = parseFloat(change);
-    // For income: increase is good (green), decrease is bad (red)
-    // For expenses: increase is bad (red), decrease is good (green)
-    var changeColor, changeEmoji;
+    var changeColor;
     if (r.isIncome) {
       changeColor = changeNum >= 0 ? '🟢' : '🔴';
     } else {
@@ -1215,10 +1392,9 @@ function renderMonthComparison(month, year) {
 }
 
 /**
- * Render yearly overview table showing all 12 months
- * Displays income, expenses, savings, and savings rate per month
+ * Render yearly overview table
  * Syllabus: for loop, calculations, table generation
- * @param {number} year - Year to display
+ * @param {number} year - Year
  */
 function renderYearlyOverview(year) {
   var container = $('#yearlyOverview');
@@ -1261,9 +1437,8 @@ function renderYearlyOverview(year) {
 }
 
 /**
- * Render biggest expense of the month card
- * Finds the single largest expense transaction
- * Syllabus: Array.filter(), Array.sort(), conditional rendering
+ * Render biggest expense of the month
+ * Syllabus: Array.filter(), Array.sort()
  * @param {number} month - Month
  * @param {number} year - Year
  */
@@ -1290,7 +1465,7 @@ function renderBiggestExpense(month, year) {
 }
 
 /**
- * Render spending streak - consecutive days under daily average budget
+ * Render spending streak
  * Syllabus: Date arithmetic, for loop, conditional counting
  * @param {number} month - Month
  * @param {number} year - Year
@@ -1312,7 +1487,6 @@ function renderSpendingStreak(month, year) {
   var dailyBudget = totalBudget / daysInMonth;
   var daily = getDailySpending(month, year);
 
-  // Count consecutive days under budget from today backwards
   var today = new Date();
   var currentDay = (today.getMonth() + 1 === month && today.getFullYear() === year) ? today.getDate() : daysInMonth;
   var streak = 0;
@@ -1346,11 +1520,9 @@ function renderHealthScore(month, year) {
   var income = getTotalIncome(month, year);
   var expenses = getTotalExpenses(month, year);
 
-  // Component 1: Savings Rate (max 40 points)
   var savingsRate = income > 0 ? (income - expenses) / income : 0;
-  var savingsPoints = Math.min(Math.max(savingsRate * 200, 0), 40); // 20% savings = 40 pts
+  var savingsPoints = Math.min(Math.max(savingsRate * 200, 0), 40);
 
-  // Component 2: Budget Adherence (max 30 points)
   var budgets = getBudgetsByMonth(month, year);
   var adherenceScore = 30;
   if (budgets.length > 0) {
@@ -1362,16 +1534,14 @@ function renderHealthScore(month, year) {
     adherenceScore = (underBudget / budgets.length) * 30;
   }
 
-  // Component 3: Transaction Consistency (max 30 points)
   var txns = getTransactionsByMonth(month, year);
   var uniqueDays = {};
   txns.forEach(function(t) { uniqueDays[t.date] = true; });
   var activeDays = Object.keys(uniqueDays).length;
-  var consistencyScore = Math.min((activeDays / 10) * 30, 30); // 10+ active days = full score
+  var consistencyScore = Math.min((activeDays / 10) * 30, 30);
 
   var totalScore = Math.round(savingsPoints + adherenceScore + consistencyScore);
 
-  // Determine color and label
   var color, label;
   if (totalScore >= 80) { color = '#22c55e'; label = 'Excellent 💚'; }
   else if (totalScore >= 60) { color = '#eab308'; label = 'Good 💛'; }
@@ -1391,8 +1561,7 @@ function renderHealthScore(month, year) {
 
 /**
  * Open a print-friendly report in a new window
- * Creates a clean formatted report without any branding
- * Includes summary, category breakdown, and transaction list
+ * Creates clean formatted report without any branding
  * Syllabus: window.open(), document.write(), string templates
  */
 function printReport() {
@@ -1407,14 +1576,31 @@ function printReport() {
   var txns = getTransactionsByMonth(month, year);
   txns.sort(function(a, b) { return new Date(a.date) - new Date(b.date); });
 
+  // Calculate health score for print
+  var sr = income > 0 ? (income - expenses) / income : 0;
+  var sp = Math.min(Math.max(sr * 200, 0), 40);
+  var budgets = getBudgetsByMonth(month, year);
+  var as2 = 30;
+  if (budgets.length > 0) {
+    var ub = 0;
+    budgets.forEach(function(b) { if (getSpentAmount(b.category, month, year) <= b.amount) ub++; });
+    as2 = (ub / budgets.length) * 30;
+  }
+  var ud = {}; txns.forEach(function(t) { ud[t.date] = true; });
+  var cs = Math.min((Object.keys(ud).length / 10) * 30, 30);
+  var healthScore = Math.round(sp + as2 + cs);
+  var healthLabel = healthScore >= 80 ? '✅ Excellent' : healthScore >= 60 ? '💛 Good' : healthScore >= 40 ? '🟠 Fair' : '❤️ Needs Work';
+
   // Build category breakdown
   var catRows = '';
   expenseCategories.forEach(function(cat) {
     var budget = getBudgetAmount(cat, month, year);
     var spent = getSpentAmount(cat, month, year);
     if (budget > 0 || spent > 0) {
+      var pctUsed = budget > 0 ? ((spent / budget) * 100).toFixed(0) : '-';
+      var remaining = budget > 0 ? budget - spent : 0;
       var status = spent > budget && budget > 0 ? 'Over Budget' : 'On Track';
-      catRows += '<tr><td>' + (categoryIcons[cat] || '') + ' ' + cat + '</td><td style="text-align:right;">' + formatCurrency(spent) + '</td><td style="text-align:right;">' + (budget > 0 ? formatCurrency(budget) : '-') + '</td><td>' + status + '</td></tr>';
+      catRows += '<tr><td>' + (categoryIcons[cat] || '') + ' ' + cat + '</td><td style="text-align:right;">' + (budget > 0 ? formatCurrency(budget) : '-') + '</td><td style="text-align:right;">' + formatCurrency(spent) + '</td><td style="text-align:right;">' + (budget > 0 ? formatCurrency(remaining) : '-') + '</td><td style="text-align:right;">' + pctUsed + (pctUsed !== '-' ? '%' : '') + '</td></tr>';
     }
   });
 
@@ -1435,7 +1621,7 @@ function printReport() {
     'th{background:#f1f5f9;color:#475569;padding:8px 10px;text-align:left;font-size:12px;text-transform:uppercase;border-bottom:2px solid #e2e8f0;}' +
     'td{padding:8px 10px;border-bottom:1px solid #e2e8f0;font-size:13px;}' +
     'h2{color:#6366f1;font-size:16px;margin:20px 0 10px;border-left:4px solid #6366f1;padding-left:10px;}' +
-    '.summary-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:20px;}' +
+    '.summary-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:20px;}' +
     '.summary-item{background:#f8fafc;padding:10px;border-radius:8px;border:1px solid #e2e8f0;}' +
     '.summary-item .label{font-size:11px;color:#64748b;text-transform:uppercase;}' +
     '.summary-item .value{font-size:18px;font-weight:700;color:#1e293b;}' +
@@ -1444,33 +1630,34 @@ function printReport() {
     '</style></head><body>' +
     '<div class="header">' +
     '<h1>💼 BudgetWise</h1>' +
-    '<p>Monthly Financial Report</p>' +
-    '<p><strong>' + (user ? user.name : 'User') + '</strong> | ' + getMonthName(month) + ' ' + year + '</p>' +
+    '<p style="font-size:14px;color:#1e293b;font-weight:600;">Monthly Financial Report — ' + getMonthName(month) + ' ' + year + '</p>' +
+    '<p>Generated for: <strong>' + (user ? user.name : 'User') + '</strong></p>' +
     '<p>Printed on: ' + new Date().toLocaleDateString('en-IN', {day:'numeric',month:'long',year:'numeric'}) + '</p>' +
     '<p>© 2026 BudgetWise. All Rights Reserved.</p>' +
     '</div>' +
-    '<h2>📊 Summary</h2>' +
+    '<h2>📊 Financial Summary</h2>' +
     '<div class="summary-grid">' +
     '<div class="summary-item"><div class="label">Total Income</div><div class="value" style="color:#22c55e;">' + formatCurrency(income) + '</div></div>' +
     '<div class="summary-item"><div class="label">Total Expenses</div><div class="value" style="color:#ef4444;">' + formatCurrency(expenses) + '</div></div>' +
     '<div class="summary-item"><div class="label">Net Savings</div><div class="value">' + formatCurrency(savings) + '</div></div>' +
     '<div class="summary-item"><div class="label">Savings Rate</div><div class="value">' + savingsRate + '%</div></div>' +
+    '<div class="summary-item"><div class="label">Transactions</div><div class="value">' + txns.length + '</div></div>' +
+    '<div class="summary-item"><div class="label">Health Score</div><div class="value">' + healthScore + '/100 ' + healthLabel + '</div></div>' +
     '</div>' +
     '<h2>📁 Category Breakdown</h2>' +
-    '<table><thead><tr><th>Category</th><th style="text-align:right;">Spent</th><th style="text-align:right;">Budget</th><th>Status</th></tr></thead><tbody>' +
+    '<table><thead><tr><th>Category</th><th style="text-align:right;">Budget</th><th style="text-align:right;">Spent</th><th style="text-align:right;">Remaining</th><th style="text-align:right;">% Used</th></tr></thead><tbody>' +
     catRows + '</tbody></table>' +
-    '<h2>📋 Transactions (' + txns.length + ')</h2>' +
+    '<h2>📋 All Transactions (' + txns.length + ')</h2>' +
     '<table><thead><tr><th>#</th><th>Date</th><th>Description</th><th>Category</th><th style="text-align:right;">Amount</th></tr></thead><tbody>' +
     txnRows + '</tbody></table>' +
     '<div class="footer">' +
-    '© 2026 BudgetWise - All Rights Reserved | Confidential Financial Report | Generated for ' + (user ? user.name : 'User') +
+    '© 2026 BudgetWise — Confidential Financial Report | Generated for ' + (user ? user.name : 'User') + ' | budgetwise.app' +
     '</div>' +
     '</body></html>';
 
   var printWin = window.open('', '_blank', 'width=800,height=600');
   printWin.document.write(printHTML);
   printWin.document.close();
-  // Auto-trigger print after content loads
   printWin.onload = function() {
     printWin.print();
   };
@@ -1482,21 +1669,18 @@ function printReport() {
 
 /**
  * Initialize profile page with user data
- * Fills avatar, display info, and form fields from localStorage
- * Syllabus: String methods (split, map, join), jQuery DOM manipulation
+ * Syllabus: String methods, jQuery DOM manipulation
  */
 function initProfilePage() {
   var user = getCurrentUser();
   if (!user) return;
 
-  // Generate avatar initials from name
   var initials = user.name.split(' ').map(function(n) { return n[0]; }).join('').toUpperCase().substring(0, 2);
   $('#avatarCircle').text(initials);
   $('#profileName').text(user.name);
   $('#profileEmail').text(user.email);
   $('#profileSince').text(user.createdAt || '-');
 
-  // Fill edit form fields
   $('#editName').val(user.name);
   $('#editEmail').val(user.email);
   $('#editPhone').val(user.phone || '');
@@ -1504,14 +1688,183 @@ function initProfilePage() {
   $('#editMonthlyIncome').val(user.monthlyIncome || '');
   $('#editBudgetGoal').val(user.monthlyBudgetGoal || '');
 
-  // Insert footer
+  // Render lifetime stats
+  renderProfileStats();
+
+  // Render achievements
+  renderAchievements();
+
   insertFooter();
 }
 
 /**
+ * Render lifetime statistics card on profile page
+ * Shows total transactions, months active, best savings month, etc.
+ * Syllabus: Array.reduce(), Date manipulation, Math.max()
+ */
+function renderProfileStats() {
+  var container = document.getElementById('profileStats');
+  if (!container) return;
+
+  var allTxns = getTransactions();
+  var totalTracked = 0;
+  var monthsSet = {};
+  var monthlySavings = {};
+
+  allTxns.forEach(function(t) {
+    var d = new Date(t.date);
+    var key = d.getFullYear() + '-' + (d.getMonth() + 1);
+    monthsSet[key] = true;
+
+    if (t.type === 'income') {
+      totalTracked += t.amount;
+      monthlySavings[key] = (monthlySavings[key] || 0) + t.amount;
+    } else {
+      monthlySavings[key] = (monthlySavings[key] || 0) - t.amount;
+    }
+  });
+
+  var totalMonths = Object.keys(monthsSet).length;
+  var bestMonth = '';
+  var bestSavings = -Infinity;
+  for (var key in monthlySavings) {
+    if (monthlySavings[key] > bestSavings) {
+      bestSavings = monthlySavings[key];
+      bestMonth = key;
+    }
+  }
+
+  var totalSavings = 0;
+  for (var k in monthlySavings) totalSavings += monthlySavings[k];
+  var avgSavings = totalMonths > 0 ? totalSavings / totalMonths : 0;
+
+  var bestMonthDisplay = bestMonth ? getMonthName(parseInt(bestMonth.split('-')[1])) + ' ' + bestMonth.split('-')[0] : '-';
+
+  container.innerHTML =
+    '<div class="row g-3 text-center">' +
+    '<div class="col-6"><p class="card-title">Total Transactions</p><p style="font-size:1.5rem;font-weight:700;color:var(--primary);margin:0;">' + allTxns.length + '</p></div>' +
+    '<div class="col-6"><p class="card-title">Months with Data</p><p style="font-size:1.5rem;font-weight:700;color:var(--primary);margin:0;">' + totalMonths + '</p></div>' +
+    '<div class="col-6"><p class="card-title">Best Savings Month</p><p style="font-size:1rem;font-weight:600;color:var(--income);margin:0;">' + bestMonthDisplay + '<br>' + (bestSavings > -Infinity ? formatCurrency(bestSavings) : '-') + '</p></div>' +
+    '<div class="col-6"><p class="card-title">Avg Monthly Savings</p><p style="font-size:1rem;font-weight:600;color:var(--info);margin:0;">' + formatCurrency(avgSavings) + '</p></div>' +
+    '<div class="col-12"><p class="card-title">Total Money Tracked</p><p style="font-size:1.3rem;font-weight:700;color:var(--text-primary);margin:0;">' + formatCurrency(totalTracked) + '</p></div>' +
+    '</div>';
+}
+
+/**
+ * Render achievement badges on profile page
+ * Shows unlocked/locked badges based on user activity
+ * Syllabus: Conditional logic, Array methods, DOM manipulation
+ */
+function renderAchievements() {
+  var container = document.getElementById('profileAchievements');
+  if (!container) return;
+
+  var allTxns = getTransactions();
+  var goals = getGoals();
+  var now = new Date();
+  var month = now.getMonth() + 1;
+  var year = now.getFullYear();
+
+  // Check achievement conditions
+  var hasFirstTxn = allTxns.length > 0;
+  var hasSaved20 = false;
+  for (var m = 1; m <= 12; m++) {
+    var inc = getTotalIncome(m, year);
+    var exp = getTotalExpenses(m, year);
+    if (inc > 0 && ((inc - exp) / inc) >= 0.2) { hasSaved20 = true; break; }
+  }
+  var has25Txns = allTxns.length >= 25;
+  var hasGoalComplete = goals.some(function(g) { return g.saved >= g.target; });
+
+  // Check 7-day streak
+  var budgets = getBudgetsByMonth(month, year);
+  var totalBudget = 0;
+  budgets.forEach(function(b) { totalBudget += b.amount; });
+  var daysInMonth = new Date(year, month, 0).getDate();
+  var dailyBudget = totalBudget > 0 ? totalBudget / daysInMonth : Infinity;
+  var daily = getDailySpending(month, year);
+  var streak = 0;
+  var maxStreak = 0;
+  for (var d = 0; d < daily.length; d++) {
+    if (daily[d] <= dailyBudget) { streak++; maxStreak = Math.max(maxStreak, streak); }
+    else { streak = 0; }
+  }
+  var hasStreak7 = maxStreak >= 7;
+
+  // Check whole month under budget
+  var wholeMonth = budgets.length > 0;
+  budgets.forEach(function(b) {
+    if (getSpentAmount(b.category, month, year) > b.amount) wholeMonth = false;
+  });
+  var hasBudgetKing = wholeMonth && budgets.length > 0;
+
+  var badges = [
+    { emoji: '🥇', name: 'First Step', desc: 'Added first transaction', unlocked: hasFirstTxn },
+    { emoji: '💰', name: 'Smart Saver', desc: 'Saved 20%+ in any month', unlocked: hasSaved20 },
+    { emoji: '📊', name: 'Tracker Pro', desc: 'Logged 25+ transactions', unlocked: has25Txns },
+    { emoji: '🎯', name: 'Goal Getter', desc: 'Completed a savings goal', unlocked: hasGoalComplete },
+    { emoji: '🔥', name: 'Streak Master', desc: 'Under budget 7 days', unlocked: hasStreak7 },
+    { emoji: '👑', name: 'Budget King', desc: 'Under budget whole month', unlocked: hasBudgetKing }
+  ];
+
+  var html = '<div class="row g-2">';
+  badges.forEach(function(b) {
+    var cls = b.unlocked ? 'unlocked' : 'locked';
+    html += '<div class="col-4 col-md-2">' +
+      '<div class="achievement-badge ' + cls + '" title="' + b.desc + '">' +
+      '<span class="badge-emoji">' + b.emoji + '</span>' +
+      '<div class="badge-name">' + b.name + '</div>' +
+      '<div class="badge-desc">' + b.desc + '</div>' +
+      '</div></div>';
+  });
+  html += '</div>';
+  container.innerHTML = html;
+}
+
+/**
+ * Import data from a JSON file
+ * Validates and restores BudgetWise backup
+ * Syllabus: FileReader API, JSON.parse, validation
+ */
+function importData() {
+  var input = document.createElement('input');
+  input.type = 'file';
+  input.accept = '.json';
+  input.onchange = function(e) {
+    var file = e.target.files[0];
+    if (!file) return;
+
+    var reader = new FileReader();
+    reader.onload = function(event) {
+      try {
+        var data = JSON.parse(event.target.result);
+        // Validate it's a BudgetWise backup
+        if (!data.transactions && !data.user) {
+          showAlert('Invalid backup file. Please select a BudgetWise export.', 'danger');
+          return;
+        }
+        if (!confirm('This will overwrite your current data. Continue?')) return;
+
+        if (data.user) localStorage.setItem('currentUser', JSON.stringify(data.user));
+        if (data.transactions) localStorage.setItem('transactions', JSON.stringify(data.transactions));
+        if (data.budgets) localStorage.setItem('budgets', JSON.stringify(data.budgets));
+        if (data.goals) localStorage.setItem('savingsGoals', JSON.stringify(data.goals));
+        if (data.theme) localStorage.setItem('theme', data.theme);
+
+        showAlert('✅ Data imported successfully!', 'success');
+        setTimeout(function() { window.location.reload(); }, 1000);
+      } catch (err) {
+        showAlert('Error reading file. Please try again.', 'danger');
+      }
+    };
+    reader.readAsText(file);
+  };
+  input.click();
+}
+
+/**
  * Handle profile update form submission
- * Saves updated fields to localStorage and refreshes display
- * Syllabus: Event handling, Object creation, function calls
+ * Syllabus: Event handling, Object creation
  * @param {Event} event - Form submit event
  */
 function handleUpdateProfile(event) {
@@ -1530,8 +1883,7 @@ function handleUpdateProfile(event) {
 
 /**
  * Handle password change with validation
- * Checks current password, validates length and match
- * Syllabus: Form validation, conditional logic, string comparison
+ * Syllabus: Form validation, conditional logic
  * @param {Event} event - Form submit event
  */
 function handleChangePassword(event) {
@@ -1541,17 +1893,14 @@ function handleChangePassword(event) {
   var newPwd = $('#newPassword').val();
   var confirmPwd = $('#confirmNewPassword').val();
 
-  // Validate current password matches stored password
   if (current !== user.password) {
     showAlert('Current password is incorrect.', 'danger');
     return;
   }
-  // Validate minimum password length
   if (newPwd.length < 6) {
     showAlert('New password must be at least 6 characters.', 'danger');
     return;
   }
-  // Validate new password and confirmation match
   if (newPwd !== confirmPwd) {
     showAlert('New passwords do not match.', 'danger');
     return;
@@ -1565,20 +1914,116 @@ function handleChangePassword(event) {
 }
 
 // ============================================
+// EXPORT CSV - Enhanced
+// ============================================
+
+/**
+ * Export filtered transactions as CSV file
+ * Uses current filters, proper date formatting, and month-based filename
+ * Syllabus: String concatenation, Blob API, Date formatting
+ */
+function exportCSV() {
+  var data = filteredData && filteredData.length > 0 ? filteredData : getTransactions();
+  if (data.length === 0) {
+    showToast('⚠️ No transactions to export for this period.', 'warning', 'csv_empty');
+    return;
+  }
+
+  showToast('Exporting ' + data.length + ' transactions...', 'info', 'csv_export');
+
+  var csv = '#,Date,Description,Category,Type,Amount,Tags,Note\n';
+  data.forEach(function(t, i) {
+    var dateStr = new Date(t.date).toLocaleDateString('en-IN', {day:'2-digit',month:'short',year:'numeric'});
+    csv += (i + 1) + ',"' + dateStr + '","' + t.description + '","' + t.category + '","' + (t.type === 'income' ? 'Income' : 'Expense') + '",' + t.amount + ',"' + (t.tags || '') + '","' + (t.note || '') + '"\n';
+  });
+
+  var now = new Date();
+  var monthNames = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+  var filename = 'BudgetWise_' + monthNames[now.getMonth()] + '_' + now.getFullYear() + '.csv';
+
+  var blob = new Blob([csv], { type: 'text/csv' });
+  var url = URL.createObjectURL(blob);
+  var a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  a.click();
+  URL.revokeObjectURL(url);
+
+  setTimeout(function() {
+    showToast('✅ CSV exported! ' + data.length + ' transactions saved.', 'success', 'csv_done');
+  }, 500);
+}
+
+// ============================================
+// UTILITY FUNCTIONS
+// ============================================
+
+/**
+ * Clear all app data
+ * Syllabus: confirm(), localStorage.removeItem()
+ */
+function clearAllData() {
+  if (confirm('Are you sure you want to delete ALL data? This cannot be undone!')) {
+    localStorage.removeItem('transactions');
+    localStorage.removeItem('budgets');
+    localStorage.removeItem('savingsGoals');
+    localStorage.removeItem('onboardingDone');
+    alert('All data has been cleared!');
+    window.location.reload();
+  }
+}
+
+/**
+ * Export all app data as JSON
+ * Syllabus: Blob API, URL.createObjectURL()
+ */
+function exportAllData() {
+  var data = {
+    user: getCurrentUser(),
+    transactions: getTransactions(),
+    budgets: getBudgets(),
+    goals: getGoals(),
+    theme: localStorage.getItem('theme'),
+    exportedAt: new Date().toISOString(),
+    version: '1.0.0',
+    app: 'BudgetWise'
+  };
+  var json = JSON.stringify(data, null, 2);
+  var blob = new Blob([json], { type: 'application/json' });
+  var url = URL.createObjectURL(blob);
+  var a = document.createElement('a');
+  a.href = url;
+  a.download = 'budgetwise_backup_' + new Date().toISOString().split('T')[0] + '.json';
+  a.click();
+  URL.revokeObjectURL(url);
+  showToast('✅ Data exported successfully!', 'success', 'export_done');
+}
+
+/**
+ * Get month name from number
+ * Syllabus: Array index access
+ * @param {number} month - Month (1-12)
+ * @returns {string} Month name
+ */
+function getMonthName(month) {
+  var months = ['January', 'February', 'March', 'April', 'May', 'June',
+                'July', 'August', 'September', 'October', 'November', 'December'];
+  return months[month - 1] || '';
+}
+
+// ============================================
 // PWA INSTALL SUPPORT
 // Syllabus: Event handling, Web APIs
 // ============================================
 
 /**
  * PWA install prompt handler
- * Captures the beforeinstallprompt event for deferred installation
- * Syllabus: Window events, Web APIs, async UI patterns
+ * Syllabus: Window events, Web APIs
  */
 var deferredPrompt;
 window.addEventListener('beforeinstallprompt', function(e) {
   e.preventDefault();
   deferredPrompt = e;
-  // Show install button if it exists
   var installBtn = document.getElementById('installBtn');
   if (installBtn) {
     installBtn.style.display = 'inline-block';
@@ -1586,8 +2031,8 @@ window.addEventListener('beforeinstallprompt', function(e) {
 });
 
 /**
- * Trigger PWA installation when user clicks install button
- * Syllabus: Promise handling, user interaction events
+ * Trigger PWA installation
+ * Syllabus: Promise handling
  */
 function installApp() {
   if (deferredPrompt) {
